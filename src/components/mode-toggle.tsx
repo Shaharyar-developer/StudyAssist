@@ -1,6 +1,6 @@
 import React from "react";
 import { useTheme } from "../providers/theme";
-import { Switch } from "@nextui-org/react";
+import { Switch } from "@heroui/react";
 import { SunIcon, MoonIcon } from "lucide-react";
 
 const ThemeToggle: React.FC = () => {

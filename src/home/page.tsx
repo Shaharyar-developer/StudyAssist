@@ -1,9 +1,9 @@
-import ThemeToggle from "../components/mode-toggle";
+import { Navigation } from "../components/navigation";
 
 export default function Page() {
   return (
     <div className="">
-      <ThemeToggle />
+      <Navigation />
     </div>
   );
 }
