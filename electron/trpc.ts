@@ -4,11 +4,12 @@ import { observable } from "@trpc/server/observable";
 import { EventEmitter } from "events";
 import superjson from "superjson";
 import Store from "electron-store";
-import { NewTest } from "./handlers/test-files";
 import { ok, err } from "../src/types/fn";
+import { TestsStore } from "./handlers/test-files";
 
 const ee = new EventEmitter();
 const store = new Store();
+const testStore = new TestsStore();
 
 const t = initTRPC.create({ isServer: true, transformer: superjson });
 
@@ -54,14 +55,10 @@ export const router = t.router({
             }),
         )
         .mutation(async ({ input }) => {
-            console.log(input);
-            const test = new NewTest({
-                name: input.title,
-                fileUrl: input.filePath,
-            });
-            const res = test.getText();
-            console.log(res);
+            const res = await testStore.addTest(input.filePath, input.title);
+            return res.success ? ok(res) : err(res.reason);
         }),
+
     getConfig: t.procedure.query(() => {
         let env = store.get("env");
         if (!env) store.set("env", {});

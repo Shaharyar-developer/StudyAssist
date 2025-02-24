@@ -11,7 +11,7 @@ export function Navigation() {
     console.log(data);
     return (
         <>
-            <nav className="flex items-center justify-between w-full px-4 min-h-16 border-b border-b-default-100">
+            <nav className="flex flex-grow items-center justify-between w-[100svw] px-4 min-h-16 border-b border-b-default-100">
                 <SidebarTrigger />
                 <PreferencesMenu Modal={SettingsModal} open={openSettings} />
             </nav>

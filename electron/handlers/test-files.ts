@@ -1,85 +1,126 @@
 import { app } from "electron";
 import { z } from "zod";
 import { nanoid } from "nanoid";
-import { ok } from "../../src/types/fn";
-import * as fs from "fs";
+import { ok, err, Result } from "../../src/types/fn";
+import * as fs from "fs/promises";
 import * as path from "path";
 import { URL } from "url";
-import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 
 export const CONFIG_SCHEMA = z.object({});
 export type CONFIG = z.infer<typeof CONFIG_SCHEMA>;
 
-const DOCS_PATH = path.join(app.getPath("home"), "/.studyassist");
+type TestHead = {
+    name: string;
+    id?: string;
+    address?: string;
+};
+
+type STATE = {
+    tests: Record<string, TestHead>[];
+};
+
+const DOCS_PATH = path.join(app.getPath("home"), ".studyassist");
 const CONFIG_FILE = "config.json";
 const DOCS_STATE = "docs.json";
 
-type TestConstructor = {
-    name: string;
-    id?: string;
-};
-
-export abstract class AbstractTest {
-    protected name: string;
-    protected id?: string;
-
-    constructor({ name }: TestConstructor) {
-        this.name = name;
-    }
-}
-
-export class NewTest extends AbstractTest {
-    private fileUrl: string;
-
-    public getText = async () => {
-        const buff = fs.readFileSync(this.fileUrl);
-        const blob = new Blob([buff], { type: "application/pdf" });
-
-        const loader = new PDFLoader(blob, {
-            splitPages: false,
-        });
-        const docs = await loader.load();
-        const res = docs.map((d) => d.pageContent).join("\n");
-        ok(res);
-    };
-
-    constructor({ name, fileUrl }: TestConstructor & { fileUrl: string }) {
-        super({ name });
-        this.id = nanoid();
-        this.fileUrl = fileUrl;
-    }
-}
-
-export class Test extends AbstractTest {
-    constructor({ name }: TestConstructor) {
-        super({ name });
-    }
-}
-
 export class TestsStore {
     private path = DOCS_PATH;
-    private config = CONFIG_FILE;
-    private state = DOCS_STATE;
-    private configUrl = new URL(`file://${path.join(this.path, this.config)}`); // Use path.join and URL
+    private configUrl = new URL(`file://${path.join(DOCS_PATH, CONFIG_FILE)}`);
+    private stateUrl = new URL(`file://${path.join(DOCS_PATH, DOCS_STATE)}`);
 
-    private initiateConfig = async () => {
-        if (!fs.existsSync(this.configUrl.pathname)) {
-            // Check if the file exists
-            fs.writeFileSync(this.configUrl.pathname, JSON.stringify({})); // Create config file
-        }
-    };
+    constructor() {
+        this.initiateConfig().catch(console.error);
+    }
 
-    getConfig = async (): Promise<Result<CONFIG>> => {
-        await this.initiateConfig();
-        if (!fs.existsSync(this.configUrl.pathname))
-            return err("Config file not found");
+    private async createTestDir(name: string): Promise<string> {
+        const address = path.join(this.path, name.replace(/\s/g, "_"));
         try {
-            const parsed = CONFIG_SCHEMA.parse(
-                JSON.parse(fs.readFileSync(this.configUrl.pathname, "utf8")),
-            ); // Read file content
-            return ok(parsed);
-        } catch {
-            return err("Failed to parse config file");
+            await fs.mkdir(address, { recursive: true });
+        } catch (error) {
+            console.error("Failed to create directory:", error);
         }
-    };
+        return address;
+    }
+
+    private async ensureFileExists(filePath: string, defaultContent: string) {
+        try {
+            await fs.access(filePath);
+        } catch {
+            await fs.writeFile(filePath, defaultContent);
+        }
+    }
+
+    private async initiateConfig() {
+        try {
+            await fs.mkdir(this.path, { recursive: true });
+            await this.ensureFileExists(this.configUrl.pathname, "{}");
+            await this.ensureFileExists(
+                this.stateUrl.pathname,
+                JSON.stringify({ tests: [] }),
+            );
+        } catch (error) {
+            console.error("Error initializing config:", error);
+        }
+    }
+
+    async getDocsState(): Promise<Result<STATE>> {
+        try {
+            const content = await fs.readFile(this.stateUrl.pathname, "utf8");
+            return ok(JSON.parse(content));
+        } catch (error) {
+            console.error("Failed to read state file:", error);
+            return err("Failed to retrieve or parse state file");
+        }
+    }
+
+    async addTestToDocsState(test: TestHead): Promise<Result> {
+        const stateResult = await this.getDocsState();
+        if (!stateResult.success || !stateResult.value)
+            return err("Failed to get state");
+
+        stateResult.value.tests.push({ [test.name]: test });
+
+        try {
+            await fs.writeFile(
+                this.stateUrl.pathname,
+                JSON.stringify(stateResult.value, null, 2),
+            );
+            return ok();
+        } catch (error) {
+            console.error("Failed to update state file:", error);
+            return err("Failed to update state file");
+        }
+    }
+
+    async addTest(fileUrl: string, fileName: string): Promise<Result> {
+        const state = await this.getDocsState();
+        if (!state.success || !state.value) return err("Failed to get state");
+
+        const id = nanoid();
+        const newAddr = await this.createTestDir(fileName);
+        const pdfOut = path.join(newAddr, `${fileName}.pdf`);
+        const metadata: TestHead = { name: fileName, id, address: pdfOut };
+
+        try {
+            await fs.copyFile(fileUrl, pdfOut);
+            await fs.writeFile(
+                path.join(newAddr, "metadata.json"),
+                JSON.stringify(metadata, null, 2),
+            );
+            return await this.addTestToDocsState(metadata);
+        } catch (error) {
+            console.error("Failed to add test:", error);
+            return err("Failed to add test");
+        }
+    }
+
+    async getConfig(): Promise<Result<CONFIG>> {
+        try {
+            const content = await fs.readFile(this.configUrl.pathname, "utf8");
+            return ok(CONFIG_SCHEMA.parse(JSON.parse(content)));
+        } catch (error) {
+            console.error("Failed to read config file:", error);
+            return err("Failed to retrieve or parse config file");
+        }
+    }
 }

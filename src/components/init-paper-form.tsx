@@ -17,7 +17,7 @@ const schema = z.object({
 
 export const withInitPaperForm = () => {
     const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
-    const { mutate } = trpcReact.createTest.useMutation();
+    const { mutateAsync } = trpcReact.createTest.useMutation();
 
     async function onSubmit(formData: FormData) {
         const values = {
@@ -29,11 +29,14 @@ export const withInitPaperForm = () => {
             if (!parsedValues.file) {
                 return toast.error("Please select a file");
             }
-            mutate({
+            const res = await mutateAsync({
                 title: parsedValues.name,
                 filePath: parsedValues.file.path,
             });
-            console.log(parsedValues);
+            res.success
+                ? toast.success("Paper added successfully")
+                : toast.error(res.reason);
+            onClose();
         } catch (e: any) {
             e.errors.map((error: { message: string }) =>
                 toast.error(error.message),

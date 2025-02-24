@@ -12,6 +12,7 @@ import { trpcReact } from "../libs/trpc";
 import { Env } from "../../electron/trpc";
 import { useState } from "react";
 import { IconCheck } from "@tabler/icons-react";
+import { ThemeToggle } from "../components/mode-toggle.tsx";
 
 export const withSettingsModal = (env: Env | undefined) => {
     const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
@@ -28,12 +29,13 @@ export const withSettingsModal = (env: Env | undefined) => {
                                 ) : (
                                     <Spinner />
                                 )}
+                                <ThemeToggle />
                             </ModalBody>
                             <ModalFooter>
                                 <Button
                                     onPress={onClose}
                                     fullWidth
-                                    variant="flat"
+                                    variant="bordered"
                                 >
                                     Close
                                 </Button>
@@ -70,6 +72,8 @@ function Settings(props: Env) {
                 onChange={(e) => setApiKey(e.target.value)}
                 value={apiKey}
                 label="Google API Key"
+                type="password"
+                isRequired
                 endContent={
                     apiKey !== props.GENAI_KEY ? (
                         <Button
