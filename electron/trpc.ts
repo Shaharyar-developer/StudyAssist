@@ -5,15 +5,17 @@ import { EventEmitter } from "events";
 import superjson from "superjson";
 import Store from "electron-store";
 import { NewTest } from "./handlers/test-files";
+import { ok, err } from "../src/types/fn";
 
 const ee = new EventEmitter();
 const store = new Store();
 
 const t = initTRPC.create({ isServer: true, transformer: superjson });
 
-const envSchema = z.object({
-    GENAI_KEY?: z.string().optional(),
+export const envSchema = z.object({
+    GENAI_KEY: z.string().optional(),
 });
+export type Env = z.infer<typeof envSchema>;
 
 export const router = t.router({
     greeting: t.procedure.input(z.object({ name: z.string() })).query((req) => {
@@ -60,19 +62,28 @@ export const router = t.router({
             const res = test.getText();
             console.log(res);
         }),
-    getEnv: t.procedure.query(() => {
-        const env = store.get("env");
-        return env ? ok(envSchema.parse(env)) : err("No env found");
-    }),
-    setInEnv: t.procedure.input(envSchema).mutation(({ input }) => {
+    getConfig: t.procedure.query(() => {
+        let env = store.get("env");
+        if (!env) store.set("env", {});
+        env = store.get("env");
         try {
-        const vals = store.get("env") || {};
-        store.set("env", { ...vals, ...input });
-        return ok({});
+            const parsed = envSchema.safeParse(env);
+            if (parsed) {
+                return ok(parsed.data);
+            }
+        } catch {
+            return err("Failed to parse env");
+        }
+    }),
+    setInConfig: t.procedure.input(envSchema).mutation(({ input }) => {
+        try {
+            const vals = store.get("env") || {};
+            store.set("env", { ...vals, ...input });
+            return ok({});
         } catch {
             return err("Failed to set env");
         }
-    })
+    }),
 });
 
 export type AppRouter = typeof router;
