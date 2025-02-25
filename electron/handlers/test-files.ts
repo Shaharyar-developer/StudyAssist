@@ -91,6 +91,24 @@ export class TestsStore {
             return err("Failed to update state file");
         }
     }
+    async removeTestFromDocsState(id: string): Promise<Result> {
+        const stateResult = await this.getDocsState();
+        if (!stateResult.success || !stateResult.value)
+            return err("Failed to get state");
+
+        stateResult.value.tests = stateResult.value.tests.filter((t) => !t[id]);
+
+        try {
+            await fs.writeFile(
+                this.stateUrl.pathname,
+                JSON.stringify(stateResult.value, null, 2),
+            );
+            return ok();
+        } catch (error) {
+            console.error("Failed to update state file:", error);
+            return err("Failed to update state file");
+        }
+    }
 
     async addTest(fileUrl: string, fileName: string): Promise<Result> {
         const state = await this.getDocsState();
@@ -111,6 +129,50 @@ export class TestsStore {
         } catch (error) {
             console.error("Failed to add test:", error);
             return err("Failed to add test");
+        }
+    }
+
+    async getTests(): Promise<Result<Record<string, TestHead>[]>> {
+        const state = await this.getDocsState();
+        if (!state.success || !state.value) return err("Failed to get state");
+
+        return ok(state.value.tests);
+    }
+    async getTestById(id: string): Promise<Result<unknown>> {
+        const state = await this.getDocsState();
+        if (!state.success || !state.value) return err("Failed to get state");
+        const test = state.value.tests.find((t) => t[id]);
+        if (!test) return err("Test not found");
+        const testPath = test[id].address;
+        if (!testPath) return err("Test not found");
+        try {
+            const content = await fs.readFile(testPath, "base64url");
+            return ok(content);
+        } catch (error) {
+            console.error("Failed to read test file:", error);
+            return err("Failed to retrieve or parse test file");
+        }
+    }
+    async deleteTest(id: string): Promise<Result> {
+        const state = await this.getDocsState();
+        if (!state.success || !state.value) return err("Failed to get state");
+        const test = state.value.tests.find((t) => t[id]);
+        if (!test) return err("Test not found");
+        const testPath = test[id].address;
+        if (!testPath) return err("Test not found");
+        try {
+            await fs.rm(testPath, { recursive: true });
+            state.value.tests = state.value.tests.filter((t) => !t[id]);
+            await fs.writeFile(
+                this.stateUrl.pathname,
+                JSON.stringify(state.value, null, 2),
+            );
+            const res = await this.removeTestFromDocsState(id);
+            if (!res.success) return res;
+            return ok();
+        } catch (error) {
+            console.error("Failed to delete test file:", error);
+            return err("Failed to delete test file");
         }
     }
 

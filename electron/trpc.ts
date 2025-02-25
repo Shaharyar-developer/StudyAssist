@@ -19,34 +19,24 @@ export const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 export const router = t.router({
-    greeting: t.procedure.input(z.object({ name: z.string() })).query((req) => {
-        const { input } = req;
-
-        ee.emit("greeting", `Greeted ${input.name}`);
-        return {
-            text: `Hello ${input.name}` as const,
-        };
-    }),
+    // Example Subscription procedure
     subscription: t.procedure.subscription(() => {
         return observable((emit) => {
             function onGreet(text: string) {
                 emit.next({ text });
             }
-
             ee.on("greeting", onGreet);
-
-            return () => {
-                ee.off("greeting", onGreet);
-            };
+            return () => ee.off("greeting", onGreet);
         });
     }),
-    setTheme: t.procedure.input(z.string()).mutation((req) => {
-        const { input } = req;
+
+    // Theme management
+    setTheme: t.procedure.input(z.string()).mutation(({ input }) => {
         store.set("theme", input);
     }),
-    getTheme: t.procedure.query(() => {
-        return store.get("theme") || "dark";
-    }),
+    getTheme: t.procedure.query(() => store.get("theme") || "dark"),
+
+    // Test management
     createTest: t.procedure
         .input(
             z.object({
@@ -58,16 +48,24 @@ export const router = t.router({
             const res = await testStore.addTest(input.filePath, input.title);
             return res.success ? ok(res) : err(res.reason);
         }),
+    getTests: t.procedure.query(async () => {
+        const res = await testStore.getTests();
+        return res.success ? ok(res) : err(res.reason);
+    }),
+    getTestById: t.procedure.input(z.string()).query(async ({ input }) => {
+        const res = await testStore.getTestById(input);
+        return res.success ? ok(res) : err(res.reason);
+    }),
 
+    // Config management
     getConfig: t.procedure.query(() => {
-        let env = store.get("env");
-        if (!env) store.set("env", {});
-        env = store.get("env");
+        let env = store.get("env") || {};
+        store.set("env", env);
         try {
             const parsed = envSchema.safeParse(env);
-            if (parsed) {
-                return ok(parsed.data);
-            }
+            return parsed.success
+                ? ok(parsed.data)
+                : err("Failed to parse env");
         } catch {
             return err("Failed to parse env");
         }
