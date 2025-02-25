@@ -50,11 +50,11 @@ export const router = t.router({
         }),
     getTests: t.procedure.query(async () => {
         const res = await testStore.getTests();
-        return res.success ? ok(res) : err(res.reason);
+        return res.success ? ok(res.value) : err(res.reason);
     }),
-    getTestById: t.procedure.input(z.string()).query(async ({ input }) => {
+    getTestById: t.procedure.input(z.string()).mutation(async ({ input }) => {
         const res = await testStore.getTestById(input);
-        return res.success ? ok(res) : err(res.reason);
+        return res.success ? ok(res.value) : err(res.reason);
     }),
 
     // Config management

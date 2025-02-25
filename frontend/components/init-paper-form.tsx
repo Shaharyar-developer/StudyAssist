@@ -18,6 +18,7 @@ const schema = z.object({
 export const withInitPaperForm = () => {
     const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
     const { mutateAsync } = trpcReact.createTest.useMutation();
+    const utils = trpcReact.useUtils();
 
     async function onSubmit(formData: FormData) {
         const values = {
@@ -36,6 +37,8 @@ export const withInitPaperForm = () => {
             res.success
                 ? toast.success("Paper added successfully")
                 : toast.error(res.reason);
+            utils.getTests.invalidate();
+            utils.getTests.refetch();
             onClose();
         } catch (e: any) {
             e.errors.map((error: { message: string }) =>

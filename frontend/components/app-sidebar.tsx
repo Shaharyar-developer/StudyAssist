@@ -5,41 +5,27 @@ import { motion } from "framer-motion";
 import { IconLayoutSidebarRight } from "@tabler/icons-react";
 
 export const Sidebar = ({ children }: { children: React.ReactNode }) => {
-    const { isOpen, toggle } = useSidebar();
+    const { isOpen } = useSidebar();
+
     return (
-        <>
+        <motion.div
+            className="flex flex-col w-[400px] h-screen bg-default-50/75 shadow-md overflow-hidden"
+            initial={{ width: 400 }}
+            animate={{ width: isOpen ? 400 : 0 }}
+            transition={{ duration: 0.2 }}
+        >
             <motion.div
-                className={cn(
-                    `absolute flex w-[350px] flex-col h-[100svh] bg-default-50 rounded-r-3xl z-[1000] p-4`,
-                )}
-                initial={{ x: -350 }}
-                animate={
-                    isOpen
-                        ? {
-                              x: 0,
-                              opacity: 1,
-                          }
-                        : {
-                              x: -350,
-                              opacity: 0,
-                          }
-                }
-                transition={{ duration: 0.2 }}
+                className="p-4"
+                initial={{ opacity: 1, x: 0 }}
+                animate={{ opacity: isOpen ? 1 : 0, x: isOpen ? 0 : -50 }}
+                transition={{ duration: 0.1 }}
             >
                 {children}
             </motion.div>
-            <motion.div
-                onClick={toggle}
-                className={cn(
-                    "transition-all z-[999]",
-                    isOpen
-                        ? "z-0 absolute h-full w-full bg-background/80"
-                        : "opacity-0 pointer-events-none",
-                )}
-            />
-        </>
+        </motion.div>
     );
 };
+
 function Trigger() {
     const { toggle } = useSidebar();
     return (
@@ -54,26 +40,31 @@ function Trigger() {
         </Button>
     );
 }
+
 export function SidebarTrigger() {
-    const { isOpen } = useSidebar();
     return (
-        <div>
+        <div className="flex-grow">
             <Trigger />
         </div>
     );
 }
+
 export function SidebarHeader({
     className,
     ...props
 }: React.ComponentPropsWithoutRef<"div">) {
     return <div className={cn("", className)} {...props} />;
 }
+
 export function SidebarContent({
     className,
     ...props
 }: React.ComponentPropsWithoutRef<"div">) {
-    return <div className={cn("h-full", className)} {...props} />;
+    return (
+        <div className={cn("h-full flex-grow min-w-0", className)} {...props} />
+    );
 }
+
 export function SidebarFooter({
     className,
     ...props

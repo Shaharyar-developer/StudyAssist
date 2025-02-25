@@ -4,16 +4,18 @@ import { nanoid } from "nanoid";
 import { ok, err, Result } from "../../frontend/types/fn";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { URL } from "url";
 
 export const CONFIG_SCHEMA = z.object({});
 export type CONFIG = z.infer<typeof CONFIG_SCHEMA>;
 
-type TestHead = {
-    name: string;
-    id?: string;
-    address?: string;
-};
+export const TEST_HEAD_SCHEMA = z.object({
+    name: z.string().nonempty(),
+    id: z.string().nonempty(),
+    address: z.string().optional(),
+    paperAddress: z.string().optional(),
+    status: z.enum(["pending", "completed", "started"]),
+});
+export type TestHead = z.infer<typeof TEST_HEAD_SCHEMA>;
 
 type STATE = {
     tests: Record<string, TestHead>[];
@@ -25,15 +27,15 @@ const DOCS_STATE = "docs.json";
 
 export class TestsStore {
     private path = DOCS_PATH;
-    private configUrl = new URL(`file://${path.join(DOCS_PATH, CONFIG_FILE)}`);
-    private stateUrl = new URL(`file://${path.join(DOCS_PATH, DOCS_STATE)}`);
+    private configUrl = path.join(DOCS_PATH, CONFIG_FILE);
+    private stateUrl = path.join(DOCS_PATH, DOCS_STATE);
 
     constructor() {
         this.initiateConfig().catch(console.error);
     }
 
-    private async createTestDir(name: string): Promise<string> {
-        const address = path.join(this.path, name.replace(/\s/g, "_"));
+    private async createTestDir(id: string): Promise<string> {
+        const address = path.join(this.path, id.replace(/\s/g, "_"));
         try {
             await fs.mkdir(address, { recursive: true });
         } catch (error) {
@@ -53,9 +55,9 @@ export class TestsStore {
     private async initiateConfig() {
         try {
             await fs.mkdir(this.path, { recursive: true });
-            await this.ensureFileExists(this.configUrl.pathname, "{}");
+            await this.ensureFileExists(this.configUrl, "{}");
             await this.ensureFileExists(
-                this.stateUrl.pathname,
+                this.stateUrl,
                 JSON.stringify({ tests: [] }),
             );
         } catch (error) {
@@ -64,8 +66,9 @@ export class TestsStore {
     }
 
     async getDocsState(): Promise<Result<STATE>> {
+        await this.initiateConfig().catch(console.error);
         try {
-            const content = await fs.readFile(this.stateUrl.pathname, "utf8");
+            const content = await fs.readFile(this.stateUrl, "utf8");
             return ok(JSON.parse(content));
         } catch (error) {
             console.error("Failed to read state file:", error);
@@ -78,11 +81,11 @@ export class TestsStore {
         if (!stateResult.success || !stateResult.value)
             return err("Failed to get state");
 
-        stateResult.value.tests.push({ [test.name]: test });
+        stateResult.value.tests.push({ [test.id]: test });
 
         try {
             await fs.writeFile(
-                this.stateUrl.pathname,
+                this.stateUrl,
                 JSON.stringify(stateResult.value, null, 2),
             );
             return ok();
@@ -100,7 +103,7 @@ export class TestsStore {
 
         try {
             await fs.writeFile(
-                this.stateUrl.pathname,
+                this.stateUrl,
                 JSON.stringify(stateResult.value, null, 2),
             );
             return ok();
@@ -117,7 +120,13 @@ export class TestsStore {
         const id = nanoid();
         const newAddr = await this.createTestDir(fileName);
         const pdfOut = path.join(newAddr, `${fileName}.pdf`);
-        const metadata: TestHead = { name: fileName, id, address: pdfOut };
+        const metadata: TestHead = {
+            name: fileName,
+            id,
+            address: newAddr,
+            paperAddress: pdfOut,
+            status: "pending",
+        };
 
         try {
             await fs.copyFile(fileUrl, pdfOut);
@@ -138,7 +147,34 @@ export class TestsStore {
 
         return ok(state.value.tests);
     }
-    async getTestById(id: string): Promise<Result<unknown>> {
+    async getTestById(id: string): Promise<Result<TestHead>> {
+        const state = await this.getDocsState();
+        if (!state.success || !state.value) return err("Failed to get state");
+        console.log(JSON.stringify(state.value, null, 2));
+        const test = state.value.tests.find((t) => t[id]);
+        console.log("filtered Test:", test);
+        if (!test) return err("Test not found");
+        const testPath = test?.[id]?.address;
+        console.log(testPath);
+        console.log("Test Path:", testPath);
+        if (!testPath) return err("Test not found");
+        try {
+            const metadata = await fs.readFile(
+                path.join(testPath, "metadata.json"),
+                "utf8",
+            );
+            try {
+                const parsed = TEST_HEAD_SCHEMA.parse(JSON.parse(metadata));
+                return ok(parsed);
+            } catch {
+                return err("Failed to parse metadata");
+            }
+        } catch (error) {
+            console.error("Failed to read test file:", error);
+            return err("Failed to retrieve or parse test file");
+        }
+    }
+    async getTestPdf(id: string): Promise<Result<string>> {
         const state = await this.getDocsState();
         if (!state.success || !state.value) return err("Failed to get state");
         const test = state.value.tests.find((t) => t[id]);
@@ -146,13 +182,18 @@ export class TestsStore {
         const testPath = test[id].address;
         if (!testPath) return err("Test not found");
         try {
-            const content = await fs.readFile(testPath, "base64url");
-            return ok(content);
+            return ok(
+                await fs.readFile(
+                    path.join(testPath, `${test[id].name}.pdf`),
+                    "base64url",
+                ),
+            );
         } catch (error) {
             console.error("Failed to read test file:", error);
             return err("Failed to retrieve or parse test file");
         }
     }
+
     async deleteTest(id: string): Promise<Result> {
         const state = await this.getDocsState();
         if (!state.success || !state.value) return err("Failed to get state");
@@ -164,7 +205,7 @@ export class TestsStore {
             await fs.rm(testPath, { recursive: true });
             state.value.tests = state.value.tests.filter((t) => !t[id]);
             await fs.writeFile(
-                this.stateUrl.pathname,
+                this.stateUrl,
                 JSON.stringify(state.value, null, 2),
             );
             const res = await this.removeTestFromDocsState(id);
@@ -178,7 +219,7 @@ export class TestsStore {
 
     async getConfig(): Promise<Result<CONFIG>> {
         try {
-            const content = await fs.readFile(this.configUrl.pathname, "utf8");
+            const content = await fs.readFile(this.configUrl, "utf8");
             return ok(CONFIG_SCHEMA.parse(JSON.parse(content)));
         } catch (error) {
             console.error("Failed to read config file:", error);
