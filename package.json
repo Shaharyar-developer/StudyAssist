@@ -10,6 +10,7 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "@google/generative-ai": "^0.22.0",
         "@heroui/react": "2.7.2",
         "@hookform/resolvers": "^4.1.1",
         "@huggingface/hub": "^1.0.1",
@@ -29,12 +30,14 @@
         "lucide-react": "^0.468.0",
         "nanoid": "^5.1.2",
         "openai": "^4.85.4",
+        "pdf-parse": "^1.1.1",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-hook-form": "^7.54.2",
         "sonner": "^2.0.1",
         "superjson": "^2.2.2",
-        "zod": "^3.24.2"
+        "zod": "^3.24.2",
+        "zod-openapi": "^4.2.3"
     },
     "devDependencies": {
         "@types/react": "^18.2.64",

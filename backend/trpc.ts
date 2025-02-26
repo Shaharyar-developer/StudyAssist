@@ -18,6 +18,17 @@ export const envSchema = z.object({
 });
 export type Env = z.infer<typeof envSchema>;
 
+const _getConfig = () => {
+    let env = store.get("env") || {};
+    store.set("env", env);
+    try {
+        const parsed = envSchema.safeParse(env);
+        return parsed.success ? ok(parsed.data) : err("Failed to parse env");
+    } catch {
+        return err("Failed to parse env");
+    }
+};
+
 export const router = t.router({
     // Example Subscription procedure
     subscription: t.procedure.subscription(() => {
@@ -42,7 +53,7 @@ export const router = t.router({
             z.object({
                 title: z.string().nonempty(),
                 filePath: z.string().nonempty(),
-            })
+            }),
         )
         .mutation(async ({ input }) => {
             const res = await paperStore.addPaper(input.filePath, input.title);
@@ -59,16 +70,7 @@ export const router = t.router({
 
     // Config management
     getConfig: t.procedure.query(() => {
-        let env = store.get("env") || {};
-        store.set("env", env);
-        try {
-            const parsed = envSchema.safeParse(env);
-            return parsed.success
-                ? ok(parsed.data)
-                : err("Failed to parse env");
-        } catch {
-            return err("Failed to parse env");
-        }
+        return _getConfig();
     }),
     setInConfig: t.procedure.input(envSchema).mutation(({ input }) => {
         try {
@@ -80,5 +82,5 @@ export const router = t.router({
         }
     }),
 });
-
+export { _getConfig as getConfig };
 export type AppRouter = typeof router;

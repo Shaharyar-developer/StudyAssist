@@ -17,34 +17,39 @@ const schema = z.object({
 
 export const withInitPaperForm = () => {
     const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
-    const { mutateAsync } = trpcReact.createPaper.useMutation();
+    const { mutateAsync, isLoading } = trpcReact.createPaper.useMutation();
     const utils = trpcReact.useUtils();
 
     async function onSubmit(formData: FormData) {
+        // Create a new promise that will remain pending until submission is complete.
         const values = {
             name: formData.get("name"),
             file: formData.get("file"),
         };
+
         try {
             const parsedValues = schema.parse(values);
             if (!parsedValues.file) {
-                return toast.error("Please select a file");
+                toast.error("Please select a file");
+                return "Please select a file";
             }
             const res = await mutateAsync({
                 title: parsedValues.name,
                 filePath: parsedValues.file.path,
             });
-            res.success
-                ? toast.success("Paper added successfully")
-                : toast.error(res.reason);
+            if (res.success) {
+                toast.success("Paper added successfully");
+                return "Paper added successfully";
+            } else {
+                toast.error(res.reason);
+            }
             utils.getPapers.invalidate();
             utils.getPapers.refetch();
             onClose();
         } catch (e: any) {
-            e.errors.map((error: { message: string }) =>
-                toast.error(error.message)
+            e.errors.forEach((error: { message: string }) =>
+                toast.error(error.message),
             );
-            return;
         }
     }
 
@@ -54,17 +59,20 @@ export const withInitPaperForm = () => {
                 <ModalContent>
                     {(onClose) => (
                         <>
-                            <ModalHeader className="">
-                                Add new Paper
-                            </ModalHeader>
+                            <ModalHeader>Add new Paper</ModalHeader>
                             <ModalBody>
                                 <form
                                     onSubmit={async (e) => {
                                         e.preventDefault();
                                         const formData = new FormData(
-                                            e.currentTarget
+                                            e.currentTarget,
                                         );
-                                        onSubmit(formData);
+                                        const res = onSubmit(formData);
+                                        toast.promise(res, {
+                                            loading: "Adding Paper...",
+                                            success: "Paper added successfully",
+                                        });
+                                        await res;
                                     }}
                                     className="space-y-4"
                                 >
@@ -89,7 +97,7 @@ export const withInitPaperForm = () => {
                                             onChange={(e) => {
                                                 if (!e.currentTarget.files) {
                                                     return toast.error(
-                                                        "Please select a file"
+                                                        "Please select a file",
                                                     );
                                                 }
                                             }}
@@ -121,9 +129,11 @@ export const withInitPaperForm = () => {
             </Modal>
         </>
     );
+
     return {
         Component: form,
         open: onOpen,
         close: onClose,
+        isLoading,
     };
 };

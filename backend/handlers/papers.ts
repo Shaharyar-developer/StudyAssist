@@ -1,9 +1,17 @@
 import { app } from "electron";
 import { z } from "zod";
+import { createSchema, extendZodWithOpenApi } from "zod-openapi";
 import { nanoid } from "nanoid";
 import { ok, err, Result } from "../../frontend/types/fn";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
+import { getConfig } from "../trpc";
+import { Env } from "../trpc";
+import { AI } from "./ai";
+import { ObjectSchema } from "@google/generative-ai";
+
+extendZodWithOpenApi(z);
 
 /**
  * Zod schema for the application configuration.
@@ -11,20 +19,6 @@ import * as path from "path";
  */
 export const CONFIG_SCHEMA = z.object({});
 export type CONFIG = z.infer<typeof CONFIG_SCHEMA>;
-
-/**
- * Zod schema for the metadata of a paper.
- * Contains details such as name, id, address, status, etc.
- */
-export const PAPER_HEAD_SCHEMA = z.object({
-    name: z.string().nonempty(),
-    id: z.string().nonempty(),
-    address: z.string().optional(),
-    paperAddress: z.string().optional(),
-    filename: z.string().optional(),
-    status: z.enum(["pending", "completed", "started"]),
-});
-export type PaperHead = z.infer<typeof PAPER_HEAD_SCHEMA>;
 
 /**
  * Zod schema for exam metadata.
@@ -44,12 +38,30 @@ export const EXAM_METADATA_SCHEMA = z.object({
         month: z.string(),
         year: z.number(),
     }),
-    duration: z.literal(60),
+    duration: z.number(),
     total_marks: z.number(),
     document_code: z.string(),
 });
+const spec = EXAM_METADATA_SCHEMA.openapi({});
+export const ExamMetadataOpenApiSpec = createSchema(spec);
 export type ExamMetadata = z.infer<typeof EXAM_METADATA_SCHEMA>;
 
+/**
+ * Zod schema for the metadata of a paper.
+ * Contains details such as name, id, address, status, etc.
+ */
+export const PAPER_HEAD_SCHEMA = z.object({
+    name: z.string().nonempty(),
+    id: z.string().nonempty(),
+    address: z.string().optional(),
+    paperAddress: z.string().optional(),
+    filename: z.string().optional(),
+    status: z.enum(["pending", "completed", "started"]),
+    metadata: EXAM_METADATA_SCHEMA.optional(),
+});
+export type PaperHead = z.infer<typeof PAPER_HEAD_SCHEMA> & {
+    metadata?: ExamMetadata;
+};
 /**
  * State type definition.
  * `papers` is an array of objects where each object maps a paper id to its PaperHead metadata.
@@ -71,8 +83,20 @@ export class PaperStore {
     private path = DOCS_PATH;
     private configUrl = path.join(DOCS_PATH, CONFIG_FILE);
     private stateUrl = path.join(DOCS_PATH, DOCS_STATE);
+    private config: Result<Env>;
+    private AI: AI | null;
 
     constructor() {
+        this.config = { success: false, reason: "ENV not loaded" };
+        this.AI = null;
+        setTimeout(() => {
+            this.config = getConfig();
+            this.config.success
+                ? this.config.value?.GENAI_KEY
+                    ? (this.AI = new AI(this.config.value?.GENAI_KEY))
+                    : null
+                : null;
+        }, 0);
         // Initialize configuration and state when the store is instantiated.
         this.initiateConfig().catch(console.error);
     }
@@ -194,6 +218,30 @@ export class PaperStore {
         }
     }
 
+    async extractExamMetadata(fileUrl: string): Promise<Result<ExamMetadata>> {
+        if (!this.config) return err("Accessed ENV before it was loaded");
+        if (this.config.reason) return err(this.config.reason);
+        const address = path.parse(fileUrl);
+        if (address.ext !== ".pdf") return err("Invalid file format");
+        const blob = new Blob([await fs.readFile(fileUrl)]);
+        const loader = new PDFLoader(blob);
+        const docs = await loader.load();
+        if (docs[0].pageContent.length < 50)
+            return err("Failed to extract text");
+        const res = await this.AI?.generateStructured(
+            docs[0].pageContent,
+            ExamMetadataOpenApiSpec.schema as ObjectSchema,
+        );
+        if (!res?.success)
+            return err(res?.reason || "Failed to extract metadata");
+        try {
+            const parsed = EXAM_METADATA_SCHEMA.parse(res.value);
+            return ok(parsed);
+        } catch {
+            return err("Failed to parse metadata");
+        }
+    }
+
     /**
      * Adds a paper to the store by copying its file to a dedicated directory
      * and saving its metadata.
@@ -202,17 +250,21 @@ export class PaperStore {
      * @param fileName - The name of the paper.
      * @returns A Result indicating success or failure.
      */
-    async addPaper(fileUrl: string, fileName: string): Promise<Result> {
-        const state = await this.getDocsState();
-        if (!state.success || !state.value) return err("Failed to get state");
+    async addPaper(fileUrl: string, fileName: string): Promise<Result<string>> {
+        console.log(`Adding paper: fileUrl=${fileUrl}, fileName=${fileName}`);
 
-        // Generate a unique id for the paper.
+        const state = await this.getDocsState();
+        if (!state.success || !state.value) {
+            console.error("Failed to get state:", state);
+            return err("Failed to get state");
+        }
+
+        // Generate a unique id and set up paths.
         const id = nanoid();
-        // Create a directory for the paper.
         const newAddr = await this.createPapersDir(fileName);
-        // Define the output PDF path.
         const pdfOut = path.join(newAddr, `${fileName}.pdf`);
-        // Create metadata for the new paper.
+        const metadataPath = path.join(newAddr, "metadata.json");
+
         const metadata: PaperHead = {
             name: fileName,
             id,
@@ -223,15 +275,36 @@ export class PaperStore {
         };
 
         try {
-            // Copy the paper file to the new directory.
+            // Copy the file and update the document state.
             await fs.copyFile(fileUrl, pdfOut);
-            // Write the metadata to a metadata.json file.
-            await fs.writeFile(
-                path.join(newAddr, "metadata.json"),
-                JSON.stringify(metadata, null, 2),
-            );
-            // Add the paper metadata to the documents state.
-            return await this.addPaperToDocsState(metadata);
+
+            const addRes = await this.addPaperToDocsState(metadata);
+            if (!addRes.success) {
+                console.error("Failed to add paper to docs state:", addRes);
+                return err("Failed to add paper");
+            }
+
+            // Attempt to extract exam metadata.
+            try {
+                const examMetadata = await this.extractExamMetadata(pdfOut);
+                if (examMetadata.success && examMetadata.value) {
+                    metadata.metadata = examMetadata.value;
+                    await fs.writeFile(
+                        metadataPath,
+                        JSON.stringify(metadata, null, 2),
+                    );
+                    return ok("Successfully extracted exam metadata");
+                } else {
+                    console.error(
+                        "Exam metadata extraction was unsuccessful:",
+                        examMetadata,
+                    );
+                    return err("Exam metadata extraction was unsuccessful");
+                }
+            } catch (ex) {
+                console.error("Exam metadata extraction failed:", ex);
+                return err("Failed to extract exam metadata");
+            }
         } catch (error) {
             console.error("Failed to add paper:", error);
             return err("Failed to add paper");
