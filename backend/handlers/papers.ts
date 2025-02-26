@@ -8,24 +8,24 @@ import * as path from "path";
 export const CONFIG_SCHEMA = z.object({});
 export type CONFIG = z.infer<typeof CONFIG_SCHEMA>;
 
-export const TEST_HEAD_SCHEMA = z.object({
+export const PAPER_HEAD_SCHEMA = z.object({
     name: z.string().nonempty(),
     id: z.string().nonempty(),
     address: z.string().optional(),
     paperAddress: z.string().optional(),
     status: z.enum(["pending", "completed", "started"]),
 });
-export type TestHead = z.infer<typeof TEST_HEAD_SCHEMA>;
+export type PaperHead = z.infer<typeof PAPER_HEAD_SCHEMA>;
 
 type STATE = {
-    tests: Record<string, TestHead>[];
+    papers: Record<string, PaperHead>[];
 };
 
 const DOCS_PATH = path.join(app.getPath("home"), ".studyassist");
 const CONFIG_FILE = "config.json";
 const DOCS_STATE = "docs.json";
 
-export class TestsStore {
+export class PaperStore {
     private path = DOCS_PATH;
     private configUrl = path.join(DOCS_PATH, CONFIG_FILE);
     private stateUrl = path.join(DOCS_PATH, DOCS_STATE);
@@ -34,7 +34,7 @@ export class TestsStore {
         this.initiateConfig().catch(console.error);
     }
 
-    private async createTestDir(id: string): Promise<string> {
+    private async createPapersDir(id: string): Promise<string> {
         const address = path.join(this.path, id.replace(/\s/g, "_"));
         try {
             await fs.mkdir(address, { recursive: true });
@@ -58,7 +58,7 @@ export class TestsStore {
             await this.ensureFileExists(this.configUrl, "{}");
             await this.ensureFileExists(
                 this.stateUrl,
-                JSON.stringify({ tests: [] }),
+                JSON.stringify({ papers: [] })
             );
         } catch (error) {
             console.error("Error initializing config:", error);
@@ -76,17 +76,17 @@ export class TestsStore {
         }
     }
 
-    async addTestToDocsState(test: TestHead): Promise<Result> {
+    async addPaperToDocsState(paper: PaperHead): Promise<Result> {
         const stateResult = await this.getDocsState();
         if (!stateResult.success || !stateResult.value)
             return err("Failed to get state");
 
-        stateResult.value.tests.push({ [test.id]: test });
+        stateResult.value.papers.push({ [paper.id]: paper });
 
         try {
             await fs.writeFile(
                 this.stateUrl,
-                JSON.stringify(stateResult.value, null, 2),
+                JSON.stringify(stateResult.value, null, 2)
             );
             return ok();
         } catch (error) {
@@ -94,17 +94,19 @@ export class TestsStore {
             return err("Failed to update state file");
         }
     }
-    async removeTestFromDocsState(id: string): Promise<Result> {
+    async removePaperFromDocsState(id: string): Promise<Result> {
         const stateResult = await this.getDocsState();
         if (!stateResult.success || !stateResult.value)
             return err("Failed to get state");
 
-        stateResult.value.tests = stateResult.value.tests.filter((t) => !t[id]);
+        stateResult.value.papers = stateResult.value.papers.filter(
+            (t) => !t[id]
+        );
 
         try {
             await fs.writeFile(
                 this.stateUrl,
-                JSON.stringify(stateResult.value, null, 2),
+                JSON.stringify(stateResult.value, null, 2)
             );
             return ok();
         } catch (error) {
@@ -113,14 +115,14 @@ export class TestsStore {
         }
     }
 
-    async addTest(fileUrl: string, fileName: string): Promise<Result> {
+    async addPaper(fileUrl: string, fileName: string): Promise<Result> {
         const state = await this.getDocsState();
         if (!state.success || !state.value) return err("Failed to get state");
 
         const id = nanoid();
-        const newAddr = await this.createTestDir(fileName);
+        const newAddr = await this.createPapersDir(fileName);
         const pdfOut = path.join(newAddr, `${fileName}.pdf`);
-        const metadata: TestHead = {
+        const metadata: PaperHead = {
             name: fileName,
             id,
             address: newAddr,
@@ -132,88 +134,88 @@ export class TestsStore {
             await fs.copyFile(fileUrl, pdfOut);
             await fs.writeFile(
                 path.join(newAddr, "metadata.json"),
-                JSON.stringify(metadata, null, 2),
+                JSON.stringify(metadata, null, 2)
             );
-            return await this.addTestToDocsState(metadata);
+            return await this.addPaperToDocsState(metadata);
         } catch (error) {
-            console.error("Failed to add test:", error);
-            return err("Failed to add test");
+            console.error("Failed to add paper:", error);
+            return err("Failed to add paper");
         }
     }
 
-    async getTests(): Promise<Result<Record<string, TestHead>[]>> {
+    async getPapers(): Promise<Result<Record<string, PaperHead>[]>> {
         const state = await this.getDocsState();
         if (!state.success || !state.value) return err("Failed to get state");
 
-        return ok(state.value.tests);
+        return ok(state.value.papers);
     }
-    async getTestById(id: string): Promise<Result<TestHead>> {
+    async getPaperById(id: string): Promise<Result<PaperHead>> {
         const state = await this.getDocsState();
         if (!state.success || !state.value) return err("Failed to get state");
         console.log(JSON.stringify(state.value, null, 2));
-        const test = state.value.tests.find((t) => t[id]);
-        console.log("filtered Test:", test);
-        if (!test) return err("Test not found");
-        const testPath = test?.[id]?.address;
-        console.log(testPath);
-        console.log("Test Path:", testPath);
-        if (!testPath) return err("Test not found");
+        const paper = state.value.papers.find((t) => t[id]);
+        console.log("filtered Paper:", paper);
+        if (!paper) return err("Paper not found");
+        const paperPath = paper?.[id]?.address;
+        console.log(paperPath);
+        console.log("paper Path:", paperPath);
+        if (!paperPath) return err("paper not found");
         try {
             const metadata = await fs.readFile(
-                path.join(testPath, "metadata.json"),
-                "utf8",
+                path.join(paperPath, "metadata.json"),
+                "utf8"
             );
             try {
-                const parsed = TEST_HEAD_SCHEMA.parse(JSON.parse(metadata));
+                const parsed = PAPER_HEAD_SCHEMA.parse(JSON.parse(metadata));
                 return ok(parsed);
             } catch {
                 return err("Failed to parse metadata");
             }
         } catch (error) {
-            console.error("Failed to read test file:", error);
-            return err("Failed to retrieve or parse test file");
+            console.error("Failed to read paper file:", error);
+            return err("Failed to retrieve or parse paper file");
         }
     }
-    async getTestPdf(id: string): Promise<Result<string>> {
+    async getPaperPdf(id: string): Promise<Result<string>> {
         const state = await this.getDocsState();
         if (!state.success || !state.value) return err("Failed to get state");
-        const test = state.value.tests.find((t) => t[id]);
-        if (!test) return err("Test not found");
-        const testPath = test[id].address;
-        if (!testPath) return err("Test not found");
+        const paper = state.value.papers.find((t) => t[id]);
+        if (!paper) return err("paper not found");
+        const paperPath = paper[id].address;
+        if (!paperPath) return err("Paper not found");
         try {
             return ok(
                 await fs.readFile(
-                    path.join(testPath, `${test[id].name}.pdf`),
-                    "base64url",
-                ),
+                    path.join(paperPath, `${paper[id].name}.pdf`),
+                    "base64url"
+                )
             );
         } catch (error) {
-            console.error("Failed to read test file:", error);
-            return err("Failed to retrieve or parse test file");
+            console.error("Failed to read paper file:", error);
+            return err("Failed to retrieve or parse paper file");
         }
     }
 
-    async deleteTest(id: string): Promise<Result> {
+    async deletePaper(id: string): Promise<Result> {
         const state = await this.getDocsState();
         if (!state.success || !state.value) return err("Failed to get state");
-        const test = state.value.tests.find((t) => t[id]);
-        if (!test) return err("Test not found");
-        const testPath = test[id].address;
-        if (!testPath) return err("Test not found");
+        const paper = state.value.papers.find((t) => t[id]);
+        if (!paper) return err("Paper not found");
+        const paperPath = paper[id].address;
+        if (!paperPath) return err("Paper not found");
         try {
-            await fs.rm(testPath, { recursive: true });
-            state.value.tests = state.value.tests.filter((t) => !t[id]);
+            await fs.rm(paperPath, { recursive: true });
+            state.value.papers = state.value.papers.filter((t) => !t[id]);
             await fs.writeFile(
                 this.stateUrl,
-                JSON.stringify(state.value, null, 2),
+                JSON.stringify(state.value, null, 2)
             );
-            const res = await this.removeTestFromDocsState(id);
+            const res = await this.removePaperFromDocsState(id);
             if (!res.success) return res;
             return ok();
         } catch (error) {
-            console.error("Failed to delete test file:", error);
-            return err("Failed to delete test file");
+            console.error("Failed to delete paper file:", error);
+            return err("Failed to delete paper file");
         }
     }
 

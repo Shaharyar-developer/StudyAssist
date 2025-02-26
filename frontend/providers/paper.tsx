@@ -1,24 +1,24 @@
 import { createContext, useState, useContext } from "react";
-import { TestHead } from "../../backend/handlers/test-files";
+import { PaperHead } from "../../backend/handlers/papers";
 import { trpcReact } from "../libs/trpc";
 import { toast } from "sonner";
 
 type PaperContextType = {
-    selectedTest?: TestHead;
-    setSelectedTest: (id: TestHead["id"]) => void;
+    selectedPaper?: PaperHead;
+    setSelectedPaper: (id: PaperHead["id"]) => void;
     isLoading: boolean;
 };
 
 const PaperContext = createContext<PaperContextType | null>(null);
 
 export const PaperProvider = ({ children }: { children: React.ReactNode }) => {
-    const [selectedTest, setSelectedTest] = useState<TestHead>();
+    const [selectedPaper, setSelectedPaper] = useState<PaperHead>();
 
-    const { mutateAsync, isLoading } = trpcReact.getTestById.useMutation();
+    const { mutateAsync, isLoading } = trpcReact.getPaperById.useMutation();
 
-    const selectTest = async (id: string) => {
+    const selectPaper = async (id: string) => {
         if (!id) {
-            toast.warning("No test selected");
+            toast.warning("No Paper selected");
         }
         console.log(id);
         const res = await mutateAsync(id);
@@ -26,12 +26,12 @@ export const PaperProvider = ({ children }: { children: React.ReactNode }) => {
             toast.error(res.reason);
         }
         console.log(JSON.stringify(res, null, 2));
-        setSelectedTest(res.value);
+        setSelectedPaper(res.value);
     };
 
     return (
         <PaperContext.Provider
-            value={{ selectedTest, setSelectedTest: selectTest, isLoading }}
+            value={{ selectedPaper, setSelectedPaper: selectPaper, isLoading }}
         >
             {children}
         </PaperContext.Provider>

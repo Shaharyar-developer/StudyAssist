@@ -1,4 +1,4 @@
-import { MainTestsContent } from "../home/main/tests";
+import { MainPapersContent } from "../home/main/papers";
 import { SidebarContent, SidebarFooter, SidebarHeader } from "./app-sidebar";
 
 export const SidebarOptions = () => {
@@ -6,7 +6,7 @@ export const SidebarOptions = () => {
         <>
             <SidebarHeader></SidebarHeader>
             <SidebarContent>
-                <MainTestsContent />
+                <MainPapersContent />
             </SidebarContent>
             <SidebarFooter></SidebarFooter>
         </>

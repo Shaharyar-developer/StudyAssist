@@ -1,8 +1,8 @@
-import { MainTestsContent } from "./main/tests";
+import { MainPapersContent } from "./main/papers";
 export const MainContent = () => {
     return (
         <>
-            <MainTestsContent />
+            <MainPapersContent />
         </>
     );
 };

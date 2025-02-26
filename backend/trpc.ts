@@ -5,11 +5,11 @@ import { EventEmitter } from "events";
 import superjson from "superjson";
 import Store from "electron-store";
 import { ok, err } from "../frontend/types/fn";
-import { TestsStore } from "./handlers/test-files";
+import { PaperStore } from "./handlers/papers";
 
 const ee = new EventEmitter();
 const store = new Store();
-const testStore = new TestsStore();
+const paperStore = new PaperStore();
 
 const t = initTRPC.create({ isServer: true, transformer: superjson });
 
@@ -36,24 +36,24 @@ export const router = t.router({
     }),
     getTheme: t.procedure.query(() => store.get("theme") || "dark"),
 
-    // Test management
-    createTest: t.procedure
+    // Paper management
+    createPaper: t.procedure
         .input(
             z.object({
                 title: z.string().nonempty(),
                 filePath: z.string().nonempty(),
-            }),
+            })
         )
         .mutation(async ({ input }) => {
-            const res = await testStore.addTest(input.filePath, input.title);
+            const res = await paperStore.addPaper(input.filePath, input.title);
             return res.success ? ok(res) : err(res.reason);
         }),
-    getTests: t.procedure.query(async () => {
-        const res = await testStore.getTests();
+    getPapers: t.procedure.query(async () => {
+        const res = await paperStore.getPapers();
         return res.success ? ok(res.value) : err(res.reason);
     }),
-    getTestById: t.procedure.input(z.string()).mutation(async ({ input }) => {
-        const res = await testStore.getTestById(input);
+    getPaperById: t.procedure.input(z.string()).mutation(async ({ input }) => {
+        const res = await paperStore.getPaperById(input);
         return res.success ? ok(res.value) : err(res.reason);
     }),
 

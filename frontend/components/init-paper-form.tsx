@@ -17,7 +17,7 @@ const schema = z.object({
 
 export const withInitPaperForm = () => {
     const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
-    const { mutateAsync } = trpcReact.createTest.useMutation();
+    const { mutateAsync } = trpcReact.createPaper.useMutation();
     const utils = trpcReact.useUtils();
 
     async function onSubmit(formData: FormData) {
@@ -37,12 +37,12 @@ export const withInitPaperForm = () => {
             res.success
                 ? toast.success("Paper added successfully")
                 : toast.error(res.reason);
-            utils.getTests.invalidate();
-            utils.getTests.refetch();
+            utils.getPapers.invalidate();
+            utils.getPapers.refetch();
             onClose();
         } catch (e: any) {
             e.errors.map((error: { message: string }) =>
-                toast.error(error.message),
+                toast.error(error.message)
             );
             return;
         }
@@ -62,7 +62,7 @@ export const withInitPaperForm = () => {
                                     onSubmit={async (e) => {
                                         e.preventDefault();
                                         const formData = new FormData(
-                                            e.currentTarget,
+                                            e.currentTarget
                                         );
                                         onSubmit(formData);
                                     }}
@@ -74,7 +74,7 @@ export const withInitPaperForm = () => {
                                             isRequired
                                             type="text"
                                             name="name"
-                                            description="This is the title for your Test"
+                                            description="This is the title for your Paper"
                                         />
                                     </div>
 
@@ -85,11 +85,11 @@ export const withInitPaperForm = () => {
                                             isRequired
                                             name="file"
                                             accept=".pdf"
-                                            description="Upload your Test PDF file"
+                                            description="Upload your Paper PDF file"
                                             onChange={(e) => {
                                                 if (!e.currentTarget.files) {
                                                     return toast.error(
-                                                        "Please select a file",
+                                                        "Please select a file"
                                                     );
                                                 }
                                             }}
