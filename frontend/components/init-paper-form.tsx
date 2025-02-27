@@ -11,7 +11,6 @@ import { z } from "zod";
 import { trpcReact } from "../libs/trpc";
 
 const schema = z.object({
-    name: z.string().nonempty(),
     file: z.instanceof(File),
 });
 
@@ -23,7 +22,6 @@ export const withInitPaperForm = () => {
     async function onSubmit(formData: FormData) {
         // Create a new promise that will remain pending until submission is complete.
         const values = {
-            name: formData.get("name"),
             file: formData.get("file"),
         };
 
@@ -34,7 +32,6 @@ export const withInitPaperForm = () => {
                 return "Please select a file";
             }
             const res = await mutateAsync({
-                title: parsedValues.name,
                 filePath: parsedValues.file.path,
             });
             if (res.success) {
@@ -76,16 +73,6 @@ export const withInitPaperForm = () => {
                                     }}
                                     className="space-y-4"
                                 >
-                                    <div>
-                                        <Input
-                                            label="Title"
-                                            isRequired
-                                            type="text"
-                                            name="name"
-                                            description="This is the title for your Paper"
-                                        />
-                                    </div>
-
                                     <div>
                                         <Input
                                             type="file"

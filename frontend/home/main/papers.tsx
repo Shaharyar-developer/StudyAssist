@@ -1,7 +1,7 @@
 import { PaperHead } from "../../../backend/handlers/papers";
 import { trpcReact } from "../../libs/trpc";
 import { Spinner } from "@heroui/spinner";
-import { Card, CardHeader, CardBody, CardFooter } from "@heroui/card";
+import { Card, CardBody } from "@heroui/card";
 import { Button } from "@heroui/react";
 import { usePaper } from "../../providers/paper";
 
@@ -29,6 +29,7 @@ export const MainPapersContent = () => {
                         isSelected={selectedPaper?.id === paper.id}
                         selectPaper={setSelectedPaper}
                         paper={paper}
+                        key={paper.id}
                     />
                 );
             })}
@@ -54,7 +55,7 @@ function PaperCard({
             isPressable
         >
             <CardBody className="whitespace-nowrap">
-                <p>{paper.name}</p>
+                <p>{paper.metadata?.subject}</p>
                 <p className="text-default-500 text-xs overflow-ellipsis whitespace-nowrap">
                     {paper.id}
                 </p>

@@ -20,12 +20,10 @@ export const PaperProvider = ({ children }: { children: React.ReactNode }) => {
         if (!id) {
             toast.warning("No Paper selected");
         }
-        console.log(id);
         const res = await mutateAsync(id);
         if (res.reason) {
             toast.error(res.reason);
         }
-        console.log(JSON.stringify(res, null, 2));
         setSelectedPaper(res.value);
     };
 

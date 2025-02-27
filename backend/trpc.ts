@@ -51,12 +51,11 @@ export const router = t.router({
     createPaper: t.procedure
         .input(
             z.object({
-                title: z.string().nonempty(),
                 filePath: z.string().nonempty(),
             }),
         )
         .mutation(async ({ input }) => {
-            const res = await paperStore.addPaper(input.filePath, input.title);
+            const res = await paperStore.addPaper(input.filePath);
             return res.success ? ok(res) : err(res.reason);
         }),
     getPapers: t.procedure.query(async () => {

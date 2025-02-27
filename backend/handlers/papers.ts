@@ -51,7 +51,6 @@ export type ExamMetadata = z.infer<typeof EXAM_METADATA_SCHEMA>;
  * Contains details such as name, id, address, status, etc.
  */
 export const PAPER_HEAD_SCHEMA = z.object({
-    name: z.string().nonempty(),
     id: z.string().nonempty(),
     address: z.string().optional(),
     paperAddress: z.string().optional(),
@@ -218,6 +217,14 @@ export class PaperStore {
         }
     }
 
+    /**
+     * Extracts metadata from an exam paper PDF file.
+     * Uses the AI service to generate structured data from the text content.
+     *
+     * @param fileUrl - The URL of the PDF file to extract metadata from.
+     * @returns A Result containing the extracted metadata.
+     */
+
     async extractExamMetadata(fileUrl: string): Promise<Result<ExamMetadata>> {
         if (!this.config) return err("Accessed ENV before it was loaded");
         if (this.config.reason) return err(this.config.reason);
@@ -228,6 +235,12 @@ export class PaperStore {
         const docs = await loader.load();
         if (docs[0].pageContent.length < 50)
             return err("Failed to extract text");
+        if (
+            !docs[0].pageContent.toLowerCase().includes("cambridge") ||
+            !docs[0].pageContent.toLowerCase().includes("paper")
+        ) {
+            return err("Not a valid exam paper");
+        }
         const res = await this.AI?.generateStructured(
             docs[0].pageContent,
             ExamMetadataOpenApiSpec.schema as ObjectSchema,
@@ -250,9 +263,7 @@ export class PaperStore {
      * @param fileName - The name of the paper.
      * @returns A Result indicating success or failure.
      */
-    async addPaper(fileUrl: string, fileName: string): Promise<Result<string>> {
-        console.log(`Adding paper: fileUrl=${fileUrl}, fileName=${fileName}`);
-
+    async addPaper(fileUrl: string): Promise<Result<string>> {
         const state = await this.getDocsState();
         if (!state.success || !state.value) {
             console.error("Failed to get state:", state);
@@ -261,16 +272,15 @@ export class PaperStore {
 
         // Generate a unique id and set up paths.
         const id = nanoid();
-        const newAddr = await this.createPapersDir(fileName);
-        const pdfOut = path.join(newAddr, `${fileName}.pdf`);
+        const newAddr = await this.createPapersDir(id);
+        const pdfOut = path.join(newAddr, `${id}.pdf`);
         const metadataPath = path.join(newAddr, "metadata.json");
 
         const metadata: PaperHead = {
-            name: fileName,
             id,
             address: newAddr,
             paperAddress: pdfOut,
-            filename: `${fileName}.pdf`,
+            filename: `${id}.pdf`,
             status: "pending",
         };
 
@@ -319,8 +329,40 @@ export class PaperStore {
     async getPapers(): Promise<Result<Record<string, PaperHead>[]>> {
         const state = await this.getDocsState();
         if (!state.success || !state.value) return err("Failed to get state");
-
-        return ok(state.value.papers);
+        const addresses = state.value.papers.map((p) => {
+            return p[Object.keys(p)[0]].address;
+        });
+        const paperHeads = await Promise.all(
+            addresses.map(async (address) => {
+                if (!address) return null;
+                try {
+                    const metadata = await fs.readFile(
+                        path.join(address, "metadata.json"),
+                        "utf8",
+                    );
+                    try {
+                        return PAPER_HEAD_SCHEMA.parse(JSON.parse(metadata));
+                    } catch {
+                        return null;
+                    }
+                } catch (error) {
+                    console.error("Failed to read paper file:", error);
+                    return null;
+                }
+            }),
+        );
+        return ok(
+            state.value.papers
+                .map((p, i) => {
+                    const key = Object.keys(p)[0];
+                    const head = paperHeads[i];
+                    return head ? { [key]: head } : null;
+                })
+                .filter(
+                    (entry): entry is Record<string, PaperHead> =>
+                        entry !== null,
+                ),
+        );
     }
 
     /**
@@ -369,7 +411,7 @@ export class PaperStore {
         try {
             return ok(
                 await fs.readFile(
-                    path.join(paperPath, `${paper[id].name}.pdf`),
+                    path.join(paperPath, `${paper[id].id}.pdf`),
                     "base64url",
                 ),
             );
