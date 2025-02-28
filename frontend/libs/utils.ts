@@ -5,3 +5,8 @@ export function base64UrlToBase64(base64Url: string) {
     }
     return base64;
 }
+export const transformValue = (v: number, x: number, y: number): number => {
+    const newMin = 0;
+    const newMax = 100;
+    return ((v - x) / (y - x)) * (newMax - newMin) + newMin;
+};

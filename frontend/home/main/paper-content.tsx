@@ -9,6 +9,13 @@ import {
     IconZoomOutFilled,
     IconZoomReset,
 } from "@tabler/icons-react";
+import { AnswerSection } from "./answer-section";
+import {
+    ResizableHandle,
+    ResizablePanel,
+    ResizablePanelGroup,
+} from "../../components/ui/resizable";
+import { ScrollShadow } from "@heroui/scroll-shadow";
 
 export function PaperContent(props: {
     id: string;
@@ -25,16 +32,28 @@ export function PaperContent(props: {
         return <div></div>;
     }
     return (
-        <div className="grid grid-cols-2  items-center">
-            <div className="h-full border-r-2 border-default-200"></div>
-            <div className="max-h-[calc(100svh-5rem)] pr-6 scrollbar-hide relative w-full overflow-auto">
-                <PdfDocument
-                    value={data.value}
-                    pages={props.pages}
-                    options={props.options}
-                />
-            </div>
-        </div>
+        <ResizablePanelGroup direction="horizontal">
+            <ResizablePanel defaultSize={50}>
+                <div className="max-h-[calc(100svh-5rem)] overflow-auto scrollbar-hide">
+                    <AnswerSection />
+                </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={50}>
+                <div className="pr-6 relative ">
+                    <ScrollShadow
+                        className="max-h-[calc(100svh-5rem)] w-full overflow-auto scrollbar-hide"
+                        size={100}
+                    >
+                        <PdfDocument
+                            value={data.value}
+                            pages={props.pages}
+                            options={props.options}
+                        />
+                    </ScrollShadow>
+                </div>
+            </ResizablePanel>
+        </ResizablePanelGroup>
     );
 }
 interface PdfDocumentProps {

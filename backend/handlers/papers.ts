@@ -40,6 +40,7 @@ export const EXAM_METADATA_SCHEMA = z.object({
     }),
     duration: z.number().describe("Exam Duration in Minutes"),
     total_marks: z.number(),
+    total_questions: z.number().describe("Number of Questions"),
     document_code: z.string(),
     pages: z.number(),
 });

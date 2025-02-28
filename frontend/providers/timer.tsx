@@ -1,8 +1,8 @@
-import React, { createContext, useContext } from "react";
-import { usePaperTimer } from "../hooks/usePaperTimer"; // Make sure to import the hook
+import React, { createContext } from "react";
+import { _usePaperTimer } from "../hooks/usePaperTimer"; // Make sure to import the hook
 
 // Define the context type
-interface TimerContextType {
+export interface TimerContextType {
     time: number;
     isRunning: boolean;
     isPaused: boolean;
@@ -12,22 +12,15 @@ interface TimerContextType {
 }
 
 // Create the context with a default value of null
-const TimerContext = createContext<TimerContextType | undefined>(undefined);
+export const TimerContext = createContext<TimerContextType | undefined>(
+    undefined,
+);
 
 // Create the provider component
 export const TimerProvider = ({ children }: { children: React.ReactNode }) => {
-    const timer = usePaperTimer();
+    const timer = _usePaperTimer();
 
     return (
         <TimerContext.Provider value={timer}>{children}</TimerContext.Provider>
     );
-};
-
-// Custom hook to access the timer context
-export const useTimer = (): TimerContextType => {
-    const context = useContext(TimerContext);
-    if (!context) {
-        throw new Error("useTimer must be used within a TimerProvider");
-    }
-    return context;
 };

@@ -1,6 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
+import { TimerContext, TimerContextType } from "../providers/timer";
 
-export const usePaperTimer = () => {
+export const useTimer = (): TimerContextType => {
+    const context = useContext(TimerContext);
+    if (!context) {
+        throw new Error("useTimer must be used within a TimerProvider");
+    }
+    return context;
+};
+export const _usePaperTimer = () => {
     const [time, setTime] = useState(0);
     const [isRunning, setIsRunning] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
