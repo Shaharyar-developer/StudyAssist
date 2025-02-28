@@ -1,10 +1,10 @@
-import { PaperHead } from "../../../backend/handlers/papers";
-import { trpcReact } from "../../libs/trpc";
+import { PaperHead } from "../../backend/handlers/papers";
+import { trpcReact } from "../libs/trpc";
 import { Spinner } from "@heroui/spinner";
 import { Card, CardBody } from "@heroui/card";
 import { Button, cn } from "@heroui/react";
-import { usePaper } from "../../providers/paper";
-import { useSidebar } from "../../providers/sidebar";
+import { usePaper } from "../providers/paper";
+import { useSidebar } from "../providers/sidebar";
 
 export const MainPapersContent = () => {
     const { setSelectedPaper, selectedPaper } = usePaper();
@@ -64,7 +64,7 @@ function PaperCard({
             isPressable
         >
             <CardBody className="whitespace-nowrap">
-                <p className="flex justify-between capitalize">
+                <div className="flex justify-between capitalize">
                     <span>
                         {paper.metadata?.subject.toLowerCase()}
                         {" - "}
@@ -80,7 +80,7 @@ function PaperCard({
                                 : "bg-danger",
                         )}
                     />
-                </p>
+                </div>
                 <p className="text-default-500 flex justify-between text-xs overflow-ellipsis whitespace-nowrap">
                     <span>
                         {" "}

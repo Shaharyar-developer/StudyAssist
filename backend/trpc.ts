@@ -6,6 +6,7 @@ import superjson from "superjson";
 import Store from "electron-store";
 import { ok, err } from "../frontend/types/fn";
 import { PaperStore } from "./handlers/papers";
+import { dialog } from "electron";
 
 const ee = new EventEmitter();
 const store = new Store();
@@ -48,19 +49,25 @@ export const router = t.router({
     getTheme: t.procedure.query(() => store.get("theme") || "dark"),
 
     // Paper management
-    createPaper: t.procedure
-        .input(
-            z.object({
-                filePath: z.string().nonempty(),
-            }),
-        )
-        .mutation(async ({ input }) => {
-            const res = await paperStore.addPaper(input.filePath);
-            return res.success ? ok(res) : err(res.reason);
-        }),
+    createPaper: t.procedure.mutation(async () => {
+        const file = await dialog.showOpenDialog({
+            properties: ["openFile"],
+            filters: [{ extensions: ["pdf"], name: "Documents" }],
+        });
+        console.log(file.filePaths);
+        if (!file.filePaths[0]) {
+            return err("No file selected");
+        }
+        const res = await paperStore.addPaper(file.filePaths[0]);
+        return res.success ? ok(res) : err(res.reason);
+    }),
     getPapers: t.procedure.query(async () => {
         const res = await paperStore.getPapers();
         return res.success ? ok(res.value) : err(res.reason);
+    }),
+    getPaperPdf: t.procedure.input(z.string()).query(async ({ input }) => {
+        const res = await paperStore.getPaperPdf(input);
+        return res.success ? ok(res.value) : err("Failed to get paper");
     }),
     getPaperById: t.procedure.input(z.string()).mutation(async ({ input }) => {
         const res = await paperStore.getPaperById(input);

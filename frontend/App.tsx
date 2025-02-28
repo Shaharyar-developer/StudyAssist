@@ -12,6 +12,7 @@ import { SidebarOptions } from "./components/sidebar-content.tsx";
 import { Toaster } from "sonner";
 import { Navigation } from "./components/navigation.tsx";
 import { PaperProvider } from "./providers/paper.tsx";
+import { GlobalWorkerOptions } from "pdfjs-dist";
 
 function App() {
     const [queryClient] = useState(() => new QueryClient());

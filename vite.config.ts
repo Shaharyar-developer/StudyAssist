@@ -1,12 +1,27 @@
-import { defineConfig } from "vite";
+import { defineConfig, normalizePath } from "vite";
 import path from "node:path";
 import electron from "vite-plugin-electron/simple";
 import react from "@vitejs/plugin-react";
+import { viteStaticCopy } from "vite-plugin-static-copy";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+
+const pdfjsDistPath = path.dirname(require.resolve("pdfjs-dist/package.json"));
+const cMapsDir = normalizePath(path.join(pdfjsDistPath, "cmaps"));
 
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [
         react(),
+        viteStaticCopy({
+            targets: [
+                {
+                    src: cMapsDir,
+                    dest: "",
+                },
+            ],
+        }),
         electron({
             main: {
                 // Shortcut of `build.lib.entry`.

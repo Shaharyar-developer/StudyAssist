@@ -23,6 +23,11 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
         return ipcRenderer.invoke(channel, ...omit);
     },
 });
+
+contextBridge.exposeInMainWorld("electron", {
+    getWorkerSrc: () => ipcRenderer.invoke("get-worker-path"),
+});
+
 process.on("loaded", () => {
     exposeElectronTRPC();
 });

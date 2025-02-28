@@ -1,4 +1,4 @@
-import { MainPapersContent } from "../home/main/papers";
+import { MainPapersContent } from "./papers-list";
 import { SidebarContent, SidebarFooter, SidebarHeader } from "./app-sidebar";
 
 export const SidebarOptions = () => {

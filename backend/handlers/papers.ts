@@ -41,6 +41,7 @@ export const EXAM_METADATA_SCHEMA = z.object({
     duration: z.number(),
     total_marks: z.number(),
     document_code: z.string(),
+    pages: z.number(),
 });
 const spec = EXAM_METADATA_SCHEMA.openapi({});
 export const ExamMetadataOpenApiSpec = createSchema(spec);
@@ -84,6 +85,7 @@ export class PaperStore {
     private stateUrl = path.join(DOCS_PATH, DOCS_STATE);
     private config: Result<Env>;
     private AI: AI | null;
+    private isLocked = false;
 
     constructor() {
         this.config = { success: false, reason: "ENV not loaded" };
@@ -264,12 +266,13 @@ export class PaperStore {
      * @returns A Result indicating success or failure.
      */
     async addPaper(fileUrl: string): Promise<Result<string>> {
+        if (this.isLocked) return err("Store is locked");
         const state = await this.getDocsState();
         if (!state.success || !state.value) {
             console.error("Failed to get state:", state);
             return err("Failed to get state");
         }
-
+        this.isLocked = true;
         // Generate a unique id and set up paths.
         const id = nanoid();
         const newAddr = await this.createPapersDir(id);
@@ -291,6 +294,7 @@ export class PaperStore {
             const addRes = await this.addPaperToDocsState(metadata);
             if (!addRes.success) {
                 console.error("Failed to add paper to docs state:", addRes);
+                this.isLocked = false;
                 return err("Failed to add paper");
             }
 
@@ -303,20 +307,24 @@ export class PaperStore {
                         metadataPath,
                         JSON.stringify(metadata, null, 2),
                     );
+                    this.isLocked = false;
                     return ok("Successfully extracted exam metadata");
                 } else {
                     console.error(
                         "Exam metadata extraction was unsuccessful:",
                         examMetadata,
                     );
+                    this.isLocked = false;
                     return err("Exam metadata extraction was unsuccessful");
                 }
             } catch (ex) {
                 console.error("Exam metadata extraction failed:", ex);
+                this.isLocked = false;
                 return err("Failed to extract exam metadata");
             }
         } catch (error) {
             console.error("Failed to add paper:", error);
+            this.isLocked = false;
             return err("Failed to add paper");
         }
     }
@@ -327,6 +335,7 @@ export class PaperStore {
      * @returns A Result containing an array of paper records.
      */
     async getPapers(): Promise<Result<Record<string, PaperHead>[]>> {
+        if (this.isLocked) return err("Store is locked");
         const state = await this.getDocsState();
         if (!state.success || !state.value) return err("Failed to get state");
         const addresses = state.value.papers.map((p) => {
@@ -406,15 +415,10 @@ export class PaperStore {
         if (!state.success || !state.value) return err("Failed to get state");
         const paper = state.value.papers.find((t) => t[id]);
         if (!paper) return err("paper not found");
-        const paperPath = paper[id].address;
+        const paperPath = paper[id].paperAddress;
         if (!paperPath) return err("Paper not found");
         try {
-            return ok(
-                await fs.readFile(
-                    path.join(paperPath, `${paper[id].id}.pdf`),
-                    "base64url",
-                ),
-            );
+            return ok(await fs.readFile(path.join(paperPath), "base64url"));
         } catch (error) {
             console.error("Failed to read paper file:", error);
             return err("Failed to retrieve or parse paper file");

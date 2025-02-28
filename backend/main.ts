@@ -4,10 +4,23 @@ import { fileURLToPath } from "node:url";
 import { createIPCHandler } from "electron-trpc/main";
 import { router } from "./trpc";
 import path from "node:path";
+import fs from "node:fs";
+import { ipcMain } from "electron";
 
 // @ts-ignore
 export const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const pdfjsDistPath = path.dirname(require.resolve("pdfjs-dist/package.json"));
+const pdfWorkerPath = path.join(
+    pdfjsDistPath,
+    "legacy/build",
+    "pdf.worker.min.mjs",
+);
+
+fs.cpSync(pdfWorkerPath, "./dist-electron/pdf.worker.min.mjs", {
+    recursive: true,
+});
 // The built directory structure
 //
 // ├─┬─┬ dist
@@ -75,3 +88,7 @@ app.on("activate", () => {
 });
 
 app.whenReady().then(createWindow);
+
+ipcMain.handle("get-worker-path", () => {
+    return pdfWorkerPath;
+});
