@@ -12,7 +12,7 @@ import { SidebarOptions } from "./components/sidebar-content.tsx";
 import { Toaster } from "sonner";
 import { Navigation } from "./components/navigation.tsx";
 import { PaperProvider } from "./providers/paper.tsx";
-import { GlobalWorkerOptions } from "pdfjs-dist";
+import { TimerProvider } from "./providers/timer.tsx";
 
 function App() {
     const [queryClient] = useState(() => new QueryClient());
@@ -29,20 +29,22 @@ function App() {
                 <ThemeProvider>
                     <HeroUIProvider>
                         <PaperProvider>
-                            <SidebarProvider>
-                                <Sidebar>
-                                    <SidebarOptions />
-                                </Sidebar>
-                                <div className="flex flex-col w-full">
-                                    <div className="max-h-20 pt-1">
-                                        <Navigation />
+                            <TimerProvider>
+                                <SidebarProvider>
+                                    <Sidebar>
+                                        <SidebarOptions />
+                                    </Sidebar>
+                                    <div className="flex flex-col w-full">
+                                        <div className="max-h-20 pt-1">
+                                            <Navigation />
+                                        </div>
+                                        <div className="flex-grow p-4 pt-0 h-full flex flex-col">
+                                            <Page />
+                                        </div>
                                     </div>
-                                    <div className="flex-grow p-4 pt-0 h-full flex flex-col">
-                                        <Page />
-                                    </div>
-                                </div>
-                                <Toaster />
-                            </SidebarProvider>
+                                    <Toaster />
+                                </SidebarProvider>
+                            </TimerProvider>
                         </PaperProvider>
                     </HeroUIProvider>
                 </ThemeProvider>

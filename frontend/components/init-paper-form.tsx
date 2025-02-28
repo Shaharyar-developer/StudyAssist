@@ -23,10 +23,16 @@ export const withInitPaperForm = () => {
 
     const form = (
         <>
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+            <Modal
+                hideCloseButton
+                isOpen={isOpen}
+                size="sm"
+                radius="lg"
+                onOpenChange={onOpenChange}
+            >
                 <ModalContent>
                     <>
-                        <ModalBody>
+                        <ModalBody className="min-h-32 flex items-center justify-center">
                             <Spinner size="lg" />
                         </ModalBody>
                     </>

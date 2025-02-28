@@ -38,7 +38,7 @@ export const EXAM_METADATA_SCHEMA = z.object({
         month: z.string(),
         year: z.number(),
     }),
-    duration: z.number(),
+    duration: z.number().describe("Exam Duration in Minutes"),
     total_marks: z.number(),
     document_code: z.string(),
     pages: z.number(),

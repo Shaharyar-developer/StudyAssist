@@ -43,7 +43,7 @@ function Trigger() {
 
 export function SidebarTrigger() {
     return (
-        <div className="flex-grow">
+        <div className="">
             <Trigger />
         </div>
     );
