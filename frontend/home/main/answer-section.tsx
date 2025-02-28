@@ -1,4 +1,10 @@
-import { Button, Card, CardBody, CardHeader } from "@heroui/react";
+import {
+    Button,
+    Card,
+    CardBody,
+    CardHeader,
+    ScrollShadow,
+} from "@heroui/react";
 import { usePaper } from "../../providers/paper";
 import { IconStopwatch } from "@tabler/icons-react";
 import { useTimer } from "../../hooks/usePaperTimer";
@@ -45,7 +51,7 @@ export const AnswerSection = () => {
                     Start Attempt
                 </Button>
             </div>
-            <div className="flex-grow h-full">
+            <ScrollShadow className="flex-grow rounded-3xl h-[75svh] overflow-auto scrollbar-hide">
                 {selectedPaper.metadata?.paper_type === "MCQs" ? (
                     <MCQsPaper
                         started={attemptStarted}
@@ -54,7 +60,7 @@ export const AnswerSection = () => {
                 ) : (
                     <></>
                 )}
-            </div>
+            </ScrollShadow>
         </div>
     );
 };
@@ -84,7 +90,7 @@ function MCQsPaper(props: { started: boolean; questions: number }) {
     };
 
     return (
-        <Card className="h-full w-full rounded-3xl overflow-auto" shadow="none">
+        <Card isBlurred className="w-full rounded-3xl" shadow="none">
             <CardBody>
                 {answers.map((answerObj, i) => (
                     <RadioGroup
