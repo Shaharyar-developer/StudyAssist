@@ -16,6 +16,7 @@ const t = initTRPC.create({ isServer: true, transformer: superjson });
 
 export const envSchema = z.object({
     GENAI_KEY: z.string().optional(),
+    MISTRAL_KEY: z.string().optional(),
 });
 export type Env = z.infer<typeof envSchema>;
 

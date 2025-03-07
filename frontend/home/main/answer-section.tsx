@@ -73,6 +73,8 @@ type AnswerObj = {
     answer: string;
 };
 
+// TODO: Add Submit Button
+
 function MCQsPaper(props: { started: boolean; questions: number }) {
     // Initialize state with an array of answer objects
     const [answers, setAnswers] = useState<AnswerObj[]>(

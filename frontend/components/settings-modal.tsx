@@ -24,11 +24,7 @@ export const withSettingsModal = (env: Env | undefined) => {
                         <>
                             <ModalHeader>Preferences</ModalHeader>
                             <ModalBody>
-                                {env ? (
-                                    <Settings GENAI_KEY={env.GENAI_KEY} />
-                                ) : (
-                                    <Spinner />
-                                )}
+                                {env ? <Settings props={env} /> : <Spinner />}
                                 <ThemeToggle />
                             </ModalBody>
                             <ModalFooter>
@@ -52,32 +48,40 @@ export const withSettingsModal = (env: Env | undefined) => {
         close: onClose,
     };
 };
-function Settings(props: Env) {
-    const [apiKey, setApiKey] = useState(props.GENAI_KEY || "");
+function Settings({ props }: { props: Env }) {
+    const [genAiApiKey, setGenAiApiKey] = useState(props.GENAI_KEY || "");
+    const [mistralApiKey, setMistralApiKey] = useState(props.MISTRAL_KEY || "");
     const { mutateAsync, isLoading: isMutationLoading } =
         trpcReact.setInConfig.useMutation();
     if (isMutationLoading) {
         return <Spinner />;
     }
-    const handleKeySubmit = async () => {
-        const res = await mutateAsync({ GENAI_KEY: apiKey });
+    const handleGenAiKeySubmit = async () => {
+        const res = await mutateAsync({ GENAI_KEY: genAiApiKey });
         res.success
             ? toast.success("API Key updated")
             : toast.error("Failed to update API Key");
     };
+    const handleMistralKeySubmit = async () => {
+        const res = await mutateAsync({ MISTRAL_KEY: mistralApiKey });
+        res.success
+            ? toast.success("API Key updated")
+            : toast.error("Failed to update API Key");
+    };
+
     return (
         <div className="flex flex-col space-y-4">
             <Input
-                defaultValue={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                value={apiKey}
+                defaultValue={genAiApiKey}
+                onChange={(e) => setGenAiApiKey(e.target.value)}
+                value={genAiApiKey}
                 label="Google API Key"
                 type="password"
                 isRequired
                 endContent={
-                    apiKey !== props.GENAI_KEY ? (
+                    genAiApiKey !== props.GENAI_KEY ? (
                         <Button
-                            onPress={handleKeySubmit}
+                            onPress={handleGenAiKeySubmit}
                             isIconOnly
                             size="sm"
                             variant="light"
@@ -88,6 +92,27 @@ function Settings(props: Env) {
                     ) : null
                 }
                 name="google-api-key"
+            />
+            <Input
+                defaultValue={mistralApiKey}
+                onChange={(e) => setMistralApiKey(e.target.value)}
+                value={mistralApiKey}
+                label="Mistral API Key"
+                type="password"
+                isRequired
+                endContent={
+                    mistralApiKey !== props.MISTRAL_KEY && (
+                        <Button
+                            onPress={handleMistralKeySubmit}
+                            isIconOnly
+                            size="sm"
+                            variant="light"
+                            color="primary"
+                        >
+                            <IconCheck />
+                        </Button>
+                    )
+                }
             />
         </div>
     );

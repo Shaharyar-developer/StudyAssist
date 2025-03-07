@@ -134,6 +134,7 @@ function Timer() {
                         }}
                         isIconOnly
                         variant="flat"
+                        color="danger"
                         className=""
                         size="lg"
                         radius="full"

@@ -24,15 +24,14 @@ export const MainPapersContent = () => {
     return (
         <main className="flex flex-col gap-4">
             {data.value?.map((p) => {
-                const paper = Object.values(p)[0];
-
+                console.log(p);
                 return (
                     <PaperCard
-                        isSelected={selectedPaper?.id === paper.id}
+                        isSelected={selectedPaper?.id === p.id}
                         selectPaper={setSelectedPaper}
-                        paper={paper}
+                        paper={p}
                         toggleSidebar={toggle}
-                        key={paper.id}
+                        key={p.id}
                     />
                 );
             })}
