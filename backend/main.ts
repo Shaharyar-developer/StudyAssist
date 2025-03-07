@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, shell } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { createIPCHandler } from "electron-trpc/main";
@@ -85,6 +85,12 @@ app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
         createWindow();
     }
+});
+app.on("web-contents-created", (_, contents) => {
+    contents.setWindowOpenHandler(({ url }) => {
+        shell.openExternal(url); // Opens in the system browser
+        return { action: "deny" }; // Prevents Electron from opening a new window
+    });
 });
 
 app.whenReady().then(createWindow);

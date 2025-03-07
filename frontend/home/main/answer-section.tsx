@@ -55,6 +55,7 @@ export const AnswerSection = () => {
             <ScrollShadow className="flex-grow rounded-3xl h-[80svh] p-4 overflow-auto scrollbar-hide">
                 {selectedPaper.metadata?.paper_type === "MCQs" ? (
                     <MCQsPaper
+                        id={selectedPaper.id}
                         started={attemptStarted}
                         questions={selectedPaper.metadata?.total_questions}
                     />
@@ -70,21 +71,24 @@ import { RadioGroup, Radio } from "@heroui/radio";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { trpcReact } from "../../libs/trpc";
 
 export const ANSWER_OBJ_SCHEMA = z.object({
-    type: z.enum(["mcq", "theory"]),
     question: z.number(),
     answer: z.string(),
+    marks: z.number(),
 });
 export type AnswerObj = z.infer<typeof ANSWER_OBJ_SCHEMA>;
 
-function MCQsPaper(props: { started: boolean; questions: number }) {
+function MCQsPaper(props: { started: boolean; questions: number; id: string }) {
+    const { mutateAsync } = trpcReact.createSubmission.useMutation();
+    const { time, reset } = useTimer();
     // Initialize state with an array of answer objects
     const [answers, setAnswers] = useState<AnswerObj[]>(
         Array.from({ length: props.questions }, (_, i) => ({
             question: i + 1,
             answer: "",
-            type: "mcq",
+            marks: 1,
         })),
     );
 
@@ -95,11 +99,18 @@ function MCQsPaper(props: { started: boolean; questions: number }) {
         setAnswers(newAnswers);
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
+        reset();
         if (answers.some((answer) => answer.answer === "")) {
             return toast.error(
                 "Please answer all questions before submitting.",
             );
+        }
+        const res = await mutateAsync({ id: props.id, answers, time });
+        if (res.reason) {
+            throw new Error(res.reason);
+        } else {
+            return true;
         }
     };
 
@@ -131,7 +142,13 @@ function MCQsPaper(props: { started: boolean; questions: number }) {
             <CardFooter>
                 <Button
                     isDisabled={answers.some((answer) => answer.answer === "")}
-                    onPress={handleSubmit}
+                    onPress={() => {
+                        toast.promise(handleSubmit(), {
+                            loading: "Submitting answers",
+                            error: "Failed to submit answers",
+                            success: "Answers submitted",
+                        });
+                    }}
                     startContent={<IconChecks />}
                     fullWidth
                     variant="flat"

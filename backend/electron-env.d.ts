@@ -27,5 +27,6 @@ interface Window {
     pdfjsWorkerSrc: string;
     electron: {
         getWorkerSrc: () => Promise<string>;
+        openExternal: (url: string) => void;
     };
 }

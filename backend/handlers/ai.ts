@@ -22,10 +22,11 @@ export class AI {
     public async generateStructured(
         prompt: string,
         schema: ObjectSchema,
+        system = "Extract relevant metadata from given text",
     ): Promise<Result<String>> {
         const model = this.genAi.getGenerativeModel({
             model: "gemini-2.0-flash-lite",
-            systemInstruction: "Extract relevant metadata from given text.",
+            systemInstruction: system,
         });
 
         const config = {

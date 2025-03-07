@@ -5,7 +5,7 @@ import { Card, CardBody } from "@heroui/card";
 import { Button, cn } from "@heroui/react";
 import { usePaper } from "../providers/paper";
 import { useSidebar } from "../providers/sidebar";
-import { IconAdjustments } from "@tabler/icons-react";
+import { IconAdjustments, IconInfoCircle } from "@tabler/icons-react";
 import { withPaperAdjustments } from "./paper-adjustments";
 
 export const MainPapersContent = () => {
@@ -18,8 +18,10 @@ export const MainPapersContent = () => {
     if (data?.reason || !data?.success) {
         return (
             <div>
-                Error &npbsp; {data?.reason}
-                <Button onPress={() => refetch()}>Refetch</Button>
+                Error {data?.reason}
+                <Button variant="light" onPress={() => refetch()}>
+                    Refetch
+                </Button>
             </div>
         );
     }
@@ -52,10 +54,10 @@ function PaperCard({
 }) {
     const { Component: AdjustmentsComp, onOpen } = withPaperAdjustments(paper);
     return (
-        <div className="flex">
+        <div className="flex flex-col gap-1">
             <Card
-                className="w-full bg-default-100/50 rounded-l-3xl"
-                radius="none"
+                className="w-full bg-default-100 rounded-b-md"
+                radius="lg"
                 shadow="none"
                 title={paper.status}
                 onPress={() => {
@@ -97,17 +99,23 @@ function PaperCard({
                     </p>
                 </CardBody>
             </Card>
-            <div className="">
+            <div className="flex w-full gap-1">
                 <Button
-                    className="h-full rounded-r-3xl"
+                    className="py-1.5 rounded-b-2xl rounded-t-md"
                     radius="none"
+                    variant="flat"
+                    fullWidth
+                >
+                    <IconInfoCircle />
+                </Button>
+                <Button
+                    className="h-full py-1.5 rounded-b-2xl rounded-t-md"
                     size="lg"
                     fullWidth
-                    isIconOnly
                     variant="flat"
                     onPress={onOpen}
                 >
-                    <IconAdjustments strokeWidth={1.4} />
+                    <IconAdjustments />
                 </Button>
             </div>
             {AdjustmentsComp}

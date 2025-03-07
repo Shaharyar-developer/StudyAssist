@@ -1,4 +1,4 @@
-import { Button, useDisclosure } from "@heroui/react";
+import { Button, ButtonGroup, useDisclosure } from "@heroui/react";
 import {
     Modal,
     ModalContent,
@@ -7,7 +7,7 @@ import {
     ModalFooter,
 } from "@heroui/modal";
 import { PaperHead } from "../../backend/handlers/papers";
-import { IconUpload } from "@tabler/icons-react";
+import { IconPercentage, IconSearch, IconUpload } from "@tabler/icons-react";
 import { trpcReact } from "../libs/trpc";
 import { toast } from "sonner";
 
@@ -34,28 +34,58 @@ export const withPaperAdjustments = (props: PaperHead) => {
                     </ModalHeader>
                     <ModalBody>
                         {props.hasMarkingScheme ? (
-                            <></>
+                            <>
+                                Marking Scheme is present{" "}
+                                {props.hasSubmission
+                                    ? "and submission has been made"
+                                    : "but no submission has been made"}
+                            </>
                         ) : (
                             <div className="flex items-center justify-between p-2 rounded-3xl border border-default">
-                                <p>Marking Scheme Not Present</p>{" "}
-                                <Button
-                                    onPress={() => {
-                                        toast.promise(handleMarkingScheme(), {
-                                            loading: "Adding Marking Scheme",
-                                            error: "Failed to add Marking Scheme",
-                                            success: "Marking Scheme Added",
-                                        });
-                                    }}
-                                    variant="flat"
-                                    radius="lg"
-                                    startContent={<IconUpload />}
-                                >
-                                    Upload
-                                </Button>
+                                <p>Marking Scheme</p>{" "}
+                                <ButtonGroup variant="flat" radius="lg">
+                                    <Button
+                                        onPress={() => {
+                                            toast.promise(
+                                                handleMarkingScheme(),
+                                                {
+                                                    loading:
+                                                        "Adding Marking Scheme",
+                                                    error: "Failed to add Marking Scheme",
+                                                    success:
+                                                        "Marking Scheme Added",
+                                                },
+                                            );
+                                        }}
+                                        startContent={<IconUpload />}
+                                    >
+                                        Upload
+                                    </Button>
+                                    <Button
+                                        onPress={() => {
+                                            const url = `https://www.google.com/search?q=${props.metadata?.subject}+${props.metadata?.paper_code} ${props.metadata?.exam_session.month}+${props.metadata?.exam_session.year}+marking+scheme`;
+                                            window.open(url, "_blank");
+                                        }}
+                                        isIconOnly
+                                    >
+                                        <IconSearch />
+                                    </Button>
+                                </ButtonGroup>
                             </div>
                         )}
                     </ModalBody>
-                    <ModalFooter></ModalFooter>
+                    <ModalFooter>
+                        <Button
+                            startContent={<IconPercentage />}
+                            isDisabled={
+                                !props.hasMarkingScheme || !props.hasSubmission
+                            }
+                            variant="flat"
+                            color="primary"
+                        >
+                            Check Exam
+                        </Button>
+                    </ModalFooter>
                 </ModalContent>
             </Modal>
         </>

@@ -91,11 +91,18 @@ export const router = t.router({
             return res.success ? ok(res) : err(res.reason);
         }),
     createSubmission: t.procedure
-        .input(z.object({ id: z.string(), answers: ANSWER_OBJ_SCHEMA }))
+        .input(
+            z.object({
+                id: z.string(),
+                answers: z.array(ANSWER_OBJ_SCHEMA),
+                time: z.number(),
+            }),
+        )
         .mutation(async ({ input }) => {
             const res = await paperStore.createSubmission(
                 input.id,
                 input.answers,
+                input.time,
             );
             return res.success ? ok(res) : err(res.reason);
         }),

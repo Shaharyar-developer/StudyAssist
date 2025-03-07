@@ -11,7 +11,10 @@ import { Env } from "../trpc";
 import { AI } from "./ai";
 import { ObjectSchema } from "@google/generative-ai";
 import { OCRResponse } from "@mistralai/mistralai/models/components";
-import { AnswerObj } from "../../frontend/home/main/answer-section";
+import {
+    ANSWER_OBJ_SCHEMA,
+    AnswerObj,
+} from "../../frontend/home/main/answer-section";
 export type { OCRResponse } from "@mistralai/mistralai/models/components";
 
 extendZodWithOpenApi(z);
@@ -57,6 +60,7 @@ export const PAPER_HEAD_SCHEMA = z.object({
     address: z.string(),
     paperAddress: z.string(),
     hasMarkingScheme: z.boolean().default(false),
+    hasSubmission: z.boolean().default(false),
     filename: z.string().optional(),
     status: z.enum(["pending", "completed", "started"]),
     metadata: EXAM_METADATA_SCHEMA.optional(),
@@ -64,6 +68,17 @@ export const PAPER_HEAD_SCHEMA = z.object({
 export type PaperHead = z.infer<typeof PAPER_HEAD_SCHEMA> & {
     metadata?: ExamMetadata;
 };
+
+export const SUBMISSION_SCHEMA = z.object({
+    correctAnswers: z.array(ANSWER_OBJ_SCHEMA),
+});
+export type Submission = z.infer<typeof SUBMISSION_SCHEMA> & {
+    submissions: AnswerObj[];
+    timeTaken: number;
+};
+
+const submissionSpec = SUBMISSION_SCHEMA.openapi({});
+export const SubmissionOpenApiSpec = createSchema(submissionSpec);
 
 /**
  * Updated state: papers are stored in a dictionary keyed by paper id.
@@ -172,6 +187,11 @@ export class PaperStore {
         }
     }
 
+    /**
+     * Reads the metadata file for a specific paper by its ID.
+     * @param id - The unique identifier of the paper.
+     * @returns A Result wrapping the PaperHead object if found.
+     */
     private async readMetadata(id: string): Promise<Result<PaperHead>> {
         const stateResult = await this.readState();
         if (!stateResult.success || !stateResult.value)
@@ -264,6 +284,24 @@ export class PaperStore {
     private async ocrPaper(path: string, name: string) {
         const res = await this.AI?.ocrDoc(path, name);
         return res;
+    }
+
+    private async getMarkingScheme(id: string) {
+        const stateResult = await this.readState();
+        if (!stateResult.success || !stateResult.value)
+            return err("Failed to get state");
+        const paper = stateResult.value.papers[id];
+        if (!paper || !paper.address) return err("Paper not found");
+        try {
+            const markingScheme = await fs.readFile(
+                path.join(paper.address, "marking_scheme_ocr.json"),
+                "utf8",
+            );
+            return ok(JSON.parse(markingScheme) as OCRResponse);
+        } catch (error) {
+            console.error("Failed to read marking scheme metadata:", error);
+            return err("Failed to retrieve or parse marking scheme metadata");
+        }
     }
 
     /**
@@ -519,6 +557,9 @@ export class PaperStore {
         const stateResult = await this.readState();
         if (!stateResult.success || !stateResult.value)
             return err("Failed to get state");
+        const metadata = await this.readMetadata(id);
+        if (!metadata.success || !metadata.value)
+            return err("Failed to get metadata");
         const paper = stateResult.value.papers[id];
         if (!paper || !paper.address) return err("Paper not found");
         if (paper.hasMarkingScheme)
@@ -528,7 +569,19 @@ export class PaperStore {
             const destPath = path.join(paper.address, "marking_scheme.pdf");
             await fs.copyFile(filepath, destPath);
             paper.hasMarkingScheme = true;
-            return await this.writeState(stateResult.value);
+            metadata.value.hasMarkingScheme = true;
+            await this.writeState(stateResult.value);
+            await this.writeMetadata(id, metadata.value);
+            const ocr = await this.ocrPaper(destPath, id);
+            if (ocr?.success && ocr.value) {
+                await fs.writeFile(
+                    path.join(paper.address, "marking_scheme_ocr.json"),
+                    JSON.stringify(ocr.value, null, 2),
+                );
+                return ok();
+            } else {
+                return err("Failed to OCR marking scheme");
+            }
         } catch (e) {
             console.error("Failed to add marking scheme:", e);
             return err("Failed to add marking scheme");
@@ -566,17 +619,51 @@ export class PaperStore {
      */
     async createSubmission(
         paperId: string,
-        answers: AnswerObj,
+        answers: AnswerObj[],
+        timeTaken: number,
     ): Promise<Result> {
         const stateResult = await this.readState();
         if (!stateResult.success || !stateResult.value)
             return err("Failed to get state");
+        const metadata = await this.readMetadata(paperId);
+        if (!metadata.success || !metadata.value)
+            return err("Failed to get metadata");
         const paper = stateResult.value.papers[paperId];
         if (!paper || !paper.address) return err("Paper not found");
+        if (!paper.hasMarkingScheme)
+            return err("Paper does not have a marking scheme");
+        const markingSchemeRes = await this.getMarkingScheme(paperId);
+        const markingScheme = markingSchemeRes.value?.pages
+            .map((p) => p.markdown + "\n\n")
+            .join("\n\n");
+        if (!markingScheme)
+            return err("Failed to get marking scheme for paper");
         try {
-            const destPath = path.join(paper.address, "submission.json");
-            await fs.writeFile(destPath, JSON.stringify(answers, null, 2));
+            paper.hasSubmission = true;
+            metadata.value.hasSubmission = true;
+            await this.writeState(stateResult.value);
+            await this.writeMetadata(paperId, metadata.value);
+
             await this.updatePaperStatus(paperId, "pending");
+            const res = await this.AI?.generateStructured(
+                markingScheme,
+                SubmissionOpenApiSpec.schema as ObjectSchema,
+                "Convert given markdown to structured data",
+            );
+            if (res?.reason || !res?.value) {
+                console.error(res?.reason);
+                return err("Failed to generate structured data");
+            }
+            const parsed = SUBMISSION_SCHEMA.parse(res.value);
+
+            const destPath = path.join(paper.address, "submission.json");
+            const submission = {
+                correctAnswers: parsed.correctAnswers,
+                submissions: answers,
+                timeTaken,
+            } satisfies Submission;
+            await fs.writeFile(destPath, JSON.stringify(submission, null, 2));
+
             return ok();
         } catch (e) {
             console.error(e);

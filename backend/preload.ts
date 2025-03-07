@@ -1,4 +1,4 @@
-import { ipcRenderer, contextBridge } from "electron";
+import { ipcRenderer, contextBridge, shell } from "electron";
 import "../frontend/types/fn";
 import { exposeElectronTRPC } from "electron-trpc/main";
 
@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
 
 contextBridge.exposeInMainWorld("electron", {
     getWorkerSrc: () => ipcRenderer.invoke("get-worker-path"),
+    openExternal: (url: string) => shell.openExternal(url),
 });
 
 process.on("loaded", () => {
