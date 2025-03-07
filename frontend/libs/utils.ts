@@ -6,7 +6,16 @@ export function base64UrlToBase64(base64Url: string) {
     return base64;
 }
 export const transformValue = (v: number, x: number, y: number): number => {
+    if (x === y) return 0;
     const newMin = 0;
     const newMax = 100;
-    return ((v - x) / (y - x)) * (newMax - newMin) + newMin;
+    const transformedValue = ((v - x) / (y - x)) * (newMax - newMin) + newMin;
+    return Math.max(newMin, Math.min(newMax, transformedValue));
+};
+
+export const valueToPercentage = (
+    value: number,
+    upperBound: number,
+): number => {
+    return transformValue(value, 0, upperBound);
 };

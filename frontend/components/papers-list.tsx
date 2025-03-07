@@ -7,6 +7,7 @@ import { usePaper } from "../providers/paper";
 import { useSidebar } from "../providers/sidebar";
 import { IconAdjustments, IconInfoCircle } from "@tabler/icons-react";
 import { withPaperAdjustments } from "./paper-adjustments";
+import { withPaperStatus } from "./paper-info";
 
 export const MainPapersContent = () => {
     const { setSelectedPaper, selectedPaper } = usePaper();
@@ -52,7 +53,10 @@ function PaperCard({
     isSelected: boolean;
     toggleSidebar: () => void;
 }) {
-    const { Component: AdjustmentsComp, onOpen } = withPaperAdjustments(paper);
+    const { Component: AdjustmentsComp, onOpen: onAdjustmentsOpen } =
+        withPaperAdjustments(paper);
+    const { Component: StatusComp, onOpen: onStatusOpen } =
+        withPaperStatus(paper);
     return (
         <div className="flex flex-col gap-1">
             <Card
@@ -105,6 +109,7 @@ function PaperCard({
                     radius="none"
                     variant="flat"
                     fullWidth
+                    onPress={onStatusOpen}
                 >
                     <IconInfoCircle />
                 </Button>
@@ -113,12 +118,13 @@ function PaperCard({
                     size="lg"
                     fullWidth
                     variant="flat"
-                    onPress={onOpen}
+                    onPress={onAdjustmentsOpen}
                 >
                     <IconAdjustments />
                 </Button>
             </div>
             {AdjustmentsComp}
+            {StatusComp}
         </div>
     );
 }

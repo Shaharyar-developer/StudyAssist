@@ -106,6 +106,12 @@ export const router = t.router({
             );
             return res.success ? ok(res) : err(res.reason);
         }),
+    getSubmissionById: t.procedure
+        .input(z.string())
+        .query(async ({ input }) => {
+            const res = await paperStore.getSubmission(input);
+            return res.success ? ok(res.value) : err(res.reason);
+        }),
 
     // Config management
     getConfig: t.procedure.query(() => {

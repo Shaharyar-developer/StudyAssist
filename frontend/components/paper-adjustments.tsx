@@ -74,18 +74,7 @@ export const withPaperAdjustments = (props: PaperHead) => {
                             </div>
                         )}
                     </ModalBody>
-                    <ModalFooter>
-                        <Button
-                            startContent={<IconPercentage />}
-                            isDisabled={
-                                !props.hasMarkingScheme || !props.hasSubmission
-                            }
-                            variant="flat"
-                            color="primary"
-                        >
-                            Check Exam
-                        </Button>
-                    </ModalFooter>
+                    <ModalFooter></ModalFooter>
                 </ModalContent>
             </Modal>
         </>

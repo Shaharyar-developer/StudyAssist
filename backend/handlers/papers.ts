@@ -663,11 +663,30 @@ export class PaperStore {
                 timeTaken,
             } satisfies Submission;
             await fs.writeFile(destPath, JSON.stringify(submission, null, 2));
-
+            await this.updatePaperStatus(paperId, "completed");
             return ok();
         } catch (e) {
             console.error(e);
             return err("Failed to add submission");
+        }
+    }
+
+    async getSubmission(paperId: string): Promise<Result<Submission>> {
+        const stateResult = await this.readState();
+        if (!stateResult.success || !stateResult.value)
+            return err("Failed to get state");
+        const paper = stateResult.value.papers[paperId];
+        if (!paper || !paper.address) return err("Paper not found");
+        try {
+            const submissionContent = await fs.readFile(
+                path.join(paper.address, "submission.json"),
+                "utf8",
+            );
+            const parsed = JSON.parse(submissionContent);
+            return ok(parsed);
+        } catch (error) {
+            console.error("Failed to read submission:", error);
+            return err("Failed to retrieve or parse submission");
         }
     }
 
