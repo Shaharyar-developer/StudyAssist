@@ -10,16 +10,15 @@ import {
 import { usePaper } from "../../providers/paper";
 import { IconChecks, IconStopwatch } from "@tabler/icons-react";
 import { useTimer } from "../../hooks/usePaperTimer";
-import { motion } from "framer-motion";
 
 export const AnswerSection = () => {
     const { selectedPaper, attemptStarted, setAttemptStarted } = usePaper();
     const { play, isRunning } = useTimer();
     if (!selectedPaper) return <></>;
     return (
-        <div className="flex flex-col gap-6 h-full p-5">
-            <div className="">
-                <div className="flex gap-3 flex-row text-lg text-foreground-700">
+        <div className="flex flex-col gap-1 h-full">
+            <div className="border-b p-2 px-3 border-default">
+                <div className="flex gap-3 flex-row text-lg items-center text-foreground-700">
                     <p className="capitalize flex-grow">
                         {selectedPaper.metadata?.subject.toLowerCase()} -{" "}
                         {selectedPaper.metadata?.paper_code} - Total{" "}
@@ -30,37 +29,30 @@ export const AnswerSection = () => {
                         )}
                         /{""}
                         {selectedPaper.metadata?.exam_session.year}
+                        {" | "}
+                        <span>{selectedPaper.metadata?.total_questions}</span>
+                        <span>
+                            {selectedPaper.metadata?.paper_type === "MCQs"
+                                ? "MCQs"
+                                : "Theory Questions"}
+                        </span>
                     </p>
-                    <span>{selectedPaper.metadata?.total_questions}</span>
-                    <span>
-                        {selectedPaper.metadata?.paper_type === "MCQs"
-                            ? "MCQs"
-                            : "Theory Questions"}
-                    </span>
+                    <Button
+                        onPress={() => {
+                            setAttemptStarted(true);
+                            play();
+                        }}
+                        isDisabled={isRunning}
+                        size="md"
+                        startContent={<IconStopwatch />}
+                        variant="flat"
+                        color="primary"
+                    >
+                        Start Attempt
+                    </Button>
                 </div>
             </div>
-            <motion.div
-                className="relative"
-                animate={{
-                    opacity: isRunning ? 0 : 1,
-                    y: isRunning ? -50 : 0,
-                }}
-            >
-                <Button
-                    onPress={() => {
-                        setAttemptStarted(true);
-                        play();
-                    }}
-                    fullWidth
-                    size="lg"
-                    startContent={<IconStopwatch />}
-                    variant="flat"
-                    color="primary"
-                >
-                    Start Attempt
-                </Button>
-            </motion.div>
-            <ScrollShadow className="flex-grow rounded-3xl h-[75svh] overflow-auto scrollbar-hide">
+            <ScrollShadow className="flex-grow rounded-3xl h-[80svh] p-4 overflow-auto scrollbar-hide">
                 {selectedPaper.metadata?.paper_type === "MCQs" ? (
                     <MCQsPaper
                         started={attemptStarted}
@@ -77,12 +69,14 @@ export const AnswerSection = () => {
 import { RadioGroup, Radio } from "@heroui/radio";
 import { useState } from "react";
 import { toast } from "sonner";
+import { z } from "zod";
 
-type AnswerObj = {
-    type: "mcq" | "theory";
-    question: number;
-    answer: string;
-};
+export const ANSWER_OBJ_SCHEMA = z.object({
+    type: z.enum(["mcq", "theory"]),
+    question: z.number(),
+    answer: z.string(),
+});
+export type AnswerObj = z.infer<typeof ANSWER_OBJ_SCHEMA>;
 
 function MCQsPaper(props: { started: boolean; questions: number }) {
     // Initialize state with an array of answer objects

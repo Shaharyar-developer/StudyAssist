@@ -35,10 +35,10 @@ function App() {
                                         <SidebarOptions />
                                     </Sidebar>
                                     <div className="flex flex-col w-full">
-                                        <div className="max-h-20 pt-1">
+                                        <div className="max-h-20 border-b border-b-default">
                                             <Navigation />
                                         </div>
-                                        <div className="flex-grow p-4 pt-0 h-full flex flex-col">
+                                        <div className="flex-grow h-full flex flex-col">
                                             <Page />
                                         </div>
                                     </div>

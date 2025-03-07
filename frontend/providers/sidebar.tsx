@@ -23,7 +23,7 @@ export const SidebarProvider = ({
         <SidebarContext.Provider
             value={{ isOpen, toggle, selection, setSelection }}
         >
-            <div className="flex bg-default-50">{children}</div>
+            <div className="flex">{children}</div>
         </SidebarContext.Provider>
     );
 };

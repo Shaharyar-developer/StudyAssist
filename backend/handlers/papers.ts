@@ -11,6 +11,7 @@ import { Env } from "../trpc";
 import { AI } from "./ai";
 import { ObjectSchema } from "@google/generative-ai";
 import { OCRResponse } from "@mistralai/mistralai/models/components";
+import { AnswerObj } from "../../frontend/home/main/answer-section";
 export type { OCRResponse } from "@mistralai/mistralai/models/components";
 
 extendZodWithOpenApi(z);
@@ -53,8 +54,9 @@ export type ExamMetadata = z.infer<typeof EXAM_METADATA_SCHEMA>;
  */
 export const PAPER_HEAD_SCHEMA = z.object({
     id: z.string().nonempty(),
-    address: z.string().optional(),
-    paperAddress: z.string().optional(),
+    address: z.string(),
+    paperAddress: z.string(),
+    hasMarkingScheme: z.boolean().default(false),
     filename: z.string().optional(),
     status: z.enum(["pending", "completed", "started"]),
     metadata: EXAM_METADATA_SCHEMA.optional(),
@@ -170,6 +172,43 @@ export class PaperStore {
         }
     }
 
+    private async readMetadata(id: string): Promise<Result<PaperHead>> {
+        const stateResult = await this.readState();
+        if (!stateResult.success || !stateResult.value)
+            return err("Failed to get state");
+
+        const paper = stateResult.value.papers[id];
+        if (!paper || !paper.address) return err("Paper not found");
+        try {
+            const metadataContent = await fs.readFile(
+                path.join(paper.address, "metadata.json"),
+                "utf8",
+            );
+            const parsed = PAPER_HEAD_SCHEMA.parse(JSON.parse(metadataContent));
+            return ok(parsed);
+        } catch (error) {
+            console.error("Failed to read paper metadata:", error);
+            return err("Failed to retrieve or parse paper metadata");
+        }
+    }
+
+    /**
+     * Updates the status of a paper in the state file.
+     * @param id - The unique identifier of the paper.
+     * @param status - The new status to set for the paper.
+     */
+    private async updatePaperStatus(id: string, status: PaperHead["status"]) {
+        const metadata = await this.readMetadata(id);
+        if (!metadata.success || !metadata.value)
+            return err("Failed to get metadata");
+        metadata.value.status = status;
+        const stateResult = await this.readState();
+        if (!stateResult.success || !stateResult.value)
+            return err("Failed to get state");
+        stateResult.value.papers[id].status = status;
+        await this.writeMetadata(id, metadata.value);
+    }
+
     /**
      * Writes the provided state object to the state file.
      * @param state - The state object to be saved.
@@ -182,6 +221,30 @@ export class PaperStore {
         } catch (error) {
             console.error("Failed to update state file:", error);
             return err("Failed to update state file");
+        }
+    }
+
+    /**
+     *  Writes the provided metadata object to the metadata file.
+     *  @param id - The unique identifier of the paper.
+     *  @param metadata - The metadata object to be saved.
+     */
+    private async writeMetadata(id: string, metadata: PaperHead) {
+        const stateResult = await this.readState();
+        if (!stateResult.success || !stateResult.value)
+            return err("Failed to get state");
+        const metadataPath = path.join(
+            stateResult.value.papers[id].address,
+            "metadata.json",
+        );
+        try {
+            await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+            delete metadata.metadata;
+            stateResult.value.papers[id] = metadata;
+            return await this.writeState(stateResult.value);
+        } catch (error) {
+            console.error("Failed to write metadata:", error);
+            return err("Failed to write metadata");
         }
     }
 
@@ -315,6 +378,7 @@ export class PaperStore {
             paperAddress: pdfOut,
             filename: `${id}.pdf`,
             status: "pending",
+            hasMarkingScheme: false,
         };
 
         try {
@@ -443,6 +507,35 @@ export class PaperStore {
     }
 
     /**
+     * Uploads a marking scheme to a paper by copying the file to the paper's directory.
+     * @param id - The unique identifier of the paper.
+     * @param filepath - The path to the marking scheme PDF file.
+     * @returns A Result indicating success or failure.
+     */
+    async addMarkingSchemeToPaper(
+        id: string,
+        filepath: string,
+    ): Promise<Result> {
+        const stateResult = await this.readState();
+        if (!stateResult.success || !stateResult.value)
+            return err("Failed to get state");
+        const paper = stateResult.value.papers[id];
+        if (!paper || !paper.address) return err("Paper not found");
+        if (paper.hasMarkingScheme)
+            return err("Paper already has a marking scheme");
+
+        try {
+            const destPath = path.join(paper.address, "marking_scheme.pdf");
+            await fs.copyFile(filepath, destPath);
+            paper.hasMarkingScheme = true;
+            return await this.writeState(stateResult.value);
+        } catch (e) {
+            console.error("Failed to add marking scheme:", e);
+            return err("Failed to add marking scheme");
+        }
+    }
+
+    /**
      * Deletes a paper by removing its directory and updating the state.
      * @param id - The unique identifier of the paper to delete.
      * @returns A Result indicating whether the deletion was successful.
@@ -463,6 +556,31 @@ export class PaperStore {
         } catch (error) {
             console.error("Failed to delete paper:", error);
             return err("Failed to delete paper");
+        }
+    }
+
+    /**
+     * Adds a paper submission by saving the given answers and assocoated id in a json file
+     * @param paperId - The unique identifier of the paper.
+     * @param answers - The answers submitted by the user.
+     */
+    async createSubmission(
+        paperId: string,
+        answers: AnswerObj,
+    ): Promise<Result> {
+        const stateResult = await this.readState();
+        if (!stateResult.success || !stateResult.value)
+            return err("Failed to get state");
+        const paper = stateResult.value.papers[paperId];
+        if (!paper || !paper.address) return err("Paper not found");
+        try {
+            const destPath = path.join(paper.address, "submission.json");
+            await fs.writeFile(destPath, JSON.stringify(answers, null, 2));
+            await this.updatePaperStatus(paperId, "pending");
+            return ok();
+        } catch (e) {
+            console.error(e);
+            return err("Failed to add submission");
         }
     }
 

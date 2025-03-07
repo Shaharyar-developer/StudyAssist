@@ -34,7 +34,8 @@ export function Navigation() {
                     <Button
                         variant="flat"
                         color="primary"
-                        endContent={<IconPlus />}
+                        size="lg"
+                        startContent={<IconPlus />}
                         onPress={openForm}
                     >
                         Add Paper
@@ -63,8 +64,8 @@ function Timer() {
             }}
             className="flex justify-center w-full"
         >
-            <div className="relative min-w-80 mb-1.5">
-                <div className="rounded-full relative z-50 bg-default-100 border-2 border-default-200 px-5 py-1 max-w-full mx-auto min-h-14 flex justify-between">
+            <div className="relative min-w-80">
+                <div className="rounded-full relative z-50 bg-default-50 border-2 border-default-200 px-5 py-1 max-w-full mx-auto min-h-14 flex justify-between">
                     {attemptStarted ? (
                         <>
                             <div className="flex flex-col w-full justify-center pt-1 z-10">

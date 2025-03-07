@@ -7,6 +7,7 @@ import Store from "electron-store";
 import { ok, err } from "../frontend/types/fn";
 import { PaperStore } from "./handlers/papers";
 import { dialog } from "electron";
+import { ANSWER_OBJ_SCHEMA } from "../frontend/home/main/answer-section";
 
 const ee = new EventEmitter();
 const store = new Store();
@@ -55,7 +56,6 @@ export const router = t.router({
             properties: ["openFile"],
             filters: [{ extensions: ["pdf"], name: "Documents" }],
         });
-        console.log(file.filePaths);
         if (!file.filePaths[0]) {
             return err("No file selected");
         }
@@ -74,6 +74,31 @@ export const router = t.router({
         const res = await paperStore.getPaperById(input);
         return res.success ? ok(res.value) : err(res.reason);
     }),
+    addMarkingScheme: t.procedure
+        .input(z.string())
+        .mutation(async ({ input }) => {
+            const file = await dialog.showOpenDialog({
+                properties: ["openFile"],
+                filters: [{ extensions: ["pdf"], name: "Documents" }],
+            });
+            if (!file.filePaths[0]) {
+                return err("No file selected");
+            }
+            const res = await paperStore.addMarkingSchemeToPaper(
+                input,
+                file.filePaths[0],
+            );
+            return res.success ? ok(res) : err(res.reason);
+        }),
+    createSubmission: t.procedure
+        .input(z.object({ id: z.string(), answers: ANSWER_OBJ_SCHEMA }))
+        .mutation(async ({ input }) => {
+            const res = await paperStore.createSubmission(
+                input.id,
+                input.answers,
+            );
+            return res.success ? ok(res) : err(res.reason);
+        }),
 
     // Config management
     getConfig: t.procedure.query(() => {

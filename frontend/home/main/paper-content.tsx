@@ -32,28 +32,30 @@ export function PaperContent(props: {
         return <div></div>;
     }
     return (
-        <ResizablePanelGroup direction="horizontal">
-            <ResizablePanel defaultSize={50}>
-                <div className="max-h-[calc(100svh-5rem)] overflow-auto scrollbar-hide">
-                    <AnswerSection />
-                </div>
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={50}>
-                <div className="pr-6 relative ">
-                    <ScrollShadow
-                        className="max-h-[calc(100svh-5rem)] w-full overflow-auto scrollbar-hide"
-                        size={100}
-                    >
-                        <PdfDocument
-                            value={data.value}
-                            pages={props.pages}
-                            options={props.options}
-                        />
-                    </ScrollShadow>
-                </div>
-            </ResizablePanel>
-        </ResizablePanelGroup>
+        <div className="relative">
+            <ResizablePanelGroup direction="horizontal">
+                <ResizablePanel defaultSize={50}>
+                    <div className="max-h-[calc(100svh-5rem)] overflow-auto scrollbar-hide">
+                        <AnswerSection />
+                    </div>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={50}>
+                    <div className="pr-6 relative ">
+                        <ScrollShadow
+                            className="max-h-[calc(100svh-5rem)] w-full overflow-auto scrollbar-hide"
+                            size={100}
+                        >
+                            <PdfDocument
+                                value={data.value}
+                                pages={props.pages}
+                                options={props.options}
+                            />
+                        </ScrollShadow>
+                    </div>
+                </ResizablePanel>
+            </ResizablePanelGroup>
+        </div>
     );
 }
 interface PdfDocumentProps {
@@ -77,7 +79,6 @@ export function PdfDocument({ value, pages, options }: PdfDocumentProps) {
                         key={i}
                         scale={scale}
                         pageNumber={i + 1}
-                        onRenderSuccess={(page) => console.log(page.pageNumber)}
                         renderTextLayer={false}
                         renderAnnotationLayer={false}
                     />

@@ -67,7 +67,6 @@ export class AI {
             },
             includeImageBase64: true,
         });
-        console.log("OCR: ", JSON.stringify(ocr, null, 2));
         return ok(ocr);
     }
 }

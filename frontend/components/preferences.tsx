@@ -18,7 +18,7 @@ export const PreferencesMenu = (props: {
                     <Button
                         isIconOnly
                         variant="light"
-                        size="sm"
+                        size="lg"
                         className="text-default-600"
                     >
                         <IconMenu />
