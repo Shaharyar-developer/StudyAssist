@@ -18,7 +18,7 @@ import { transformValue } from "../libs/utils";
 
 export function Navigation() {
     const { data } = trpcReact.getConfig.useQuery();
-    const { Component: FormModal, open: openForm } = withInitPaperForm();
+    const { open: openForm } = withInitPaperForm();
 
     const { Component: SettingsModal, open: openSettings } = withSettingsModal(
         data?.value,
@@ -45,7 +45,6 @@ export function Navigation() {
                     />
                 </div>
             </nav>
-            {FormModal}
         </>
     );
 }

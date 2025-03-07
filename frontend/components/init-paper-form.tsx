@@ -1,15 +1,11 @@
-import { Modal, ModalContent, ModalBody, useDisclosure } from "@heroui/modal";
-import { Spinner } from "@heroui/react";
 import { toast } from "sonner";
 import { trpcReact } from "../libs/trpc";
 
 export const withInitPaperForm = () => {
-    const { isOpen, onOpen: _onOpen, onOpenChange, onClose } = useDisclosure();
     const { mutateAsync, isLoading } = trpcReact.createPaper.useMutation();
     const utils = trpcReact.useUtils();
 
-    async function onOpen() {
-        _onOpen();
+    async function onTrigger() {
         const res = await mutateAsync();
         await new Promise((resolve) => setTimeout(resolve, 1000));
         if (res.success) {
@@ -18,33 +14,17 @@ export const withInitPaperForm = () => {
         } else {
             toast.error("Failed to create paper");
         }
-        onClose();
+    }
+    async function start() {
+        return toast.promise(onTrigger(), {
+            loading: "Creating paper...",
+            success: "Paper created",
+            error: "Failed to create paper",
+        });
     }
 
-    const form = (
-        <>
-            <Modal
-                hideCloseButton
-                isOpen={isOpen}
-                size="sm"
-                radius="lg"
-                onOpenChange={onOpenChange}
-            >
-                <ModalContent>
-                    <>
-                        <ModalBody className="min-h-32 flex items-center justify-center">
-                            <Spinner size="lg" />
-                        </ModalBody>
-                    </>
-                </ModalContent>
-            </Modal>
-        </>
-    );
-
     return {
-        Component: form,
-        open: onOpen,
-        close: onClose,
+        open: start,
         isLoading,
     };
 };

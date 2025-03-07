@@ -1,10 +1,10 @@
 import { createContext, useState, useContext } from "react";
-import { PaperHead } from "../../backend/handlers/papers";
+import { OCRResponse, PaperHead } from "../../backend/handlers/papers";
 import { trpcReact } from "../libs/trpc";
 import { toast } from "sonner";
 
 type PaperContextType = {
-    selectedPaper?: PaperHead;
+    selectedPaper?: PaperHead & OCRResponse;
     setSelectedPaper: (id: PaperHead["id"]) => void;
     attemptStarted: boolean;
     setAttemptStarted: (value: boolean) => void;
@@ -14,7 +14,9 @@ type PaperContextType = {
 const PaperContext = createContext<PaperContextType | null>(null);
 
 export const PaperProvider = ({ children }: { children: React.ReactNode }) => {
-    const [selectedPaper, setSelectedPaper] = useState<PaperHead>();
+    const [selectedPaper, setSelectedPaper] = useState<
+        PaperHead & OCRResponse
+    >();
     const [attemptStarted, setAttemptStarted] = useState(false);
 
     const { mutateAsync, isLoading } = trpcReact.getPaperById.useMutation();

@@ -1,15 +1,25 @@
 import { GoogleGenerativeAI, ObjectSchema } from "@google/generative-ai";
+import { GoogleAIFileManager } from "@google/generative-ai/server";
+import { Mistral } from "@mistralai/mistralai";
 import { err, ok } from "../../frontend/types/fn";
+import * as fs from "fs/promises";
+import { OCRResponse } from "@mistralai/mistralai/models/components";
 
 export class AI {
-    private apiKey: string;
+    protected GoogleApiKey: string;
+    protected MistralApiKey: string;
     genAi: GoogleGenerativeAI;
-    constructor(apiKey: string) {
-        this.apiKey = apiKey;
-        this.genAi = new GoogleGenerativeAI(this.apiKey);
+    fileManager: GoogleAIFileManager;
+    mistral: Mistral;
+    constructor(props: { GoogleAiKey: string; MistralKey: string }) {
+        this.GoogleApiKey = props.GoogleAiKey;
+        this.MistralApiKey = props.MistralKey;
+        this.genAi = new GoogleGenerativeAI(this.GoogleApiKey);
+        this.fileManager = new GoogleAIFileManager(this.GoogleApiKey);
+        this.mistral = new Mistral({ apiKey: this.MistralApiKey });
     }
 
-    async generateStructured(
+    public async generateStructured(
         prompt: string,
         schema: ObjectSchema,
     ): Promise<Result<String>> {
@@ -24,11 +34,40 @@ export class AI {
         };
 
         const session = model.startChat({ generationConfig: config });
-
         const res = await session.sendMessage(prompt);
 
         return res.response.text()
             ? ok(JSON.parse(res.response.text()))
             : err("Failed to generate structured data.");
+    }
+    public async ocrDoc(
+        path: string,
+        id: string,
+    ): Promise<Result<OCRResponse>> {
+        const doc = await fs.readFile(path);
+        const uploadResult = await this.mistral.files.upload({
+            file: {
+                content: new Blob([doc]),
+                fileName: `${id}.pdf`,
+            },
+            // @ts-ignore - TYPE DEFINITION IS WRONG
+            purpose: "ocr",
+        });
+        const res = await this.mistral.files.retrieve({
+            fileId: uploadResult.id,
+        });
+        const signedUrl = await this.mistral.files.getSignedUrl({
+            fileId: res.id,
+        });
+        const ocr = await this.mistral.ocr.process({
+            model: "mistral-ocr-latest",
+            document: {
+                type: "document_url",
+                documentUrl: signedUrl.url,
+            },
+            includeImageBase64: true,
+        });
+        console.log("OCR: ", JSON.stringify(ocr, null, 2));
+        return ok(ocr);
     }
 }

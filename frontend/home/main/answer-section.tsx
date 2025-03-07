@@ -2,16 +2,19 @@ import {
     Button,
     Card,
     CardBody,
+    CardFooter,
     CardHeader,
+    Divider,
     ScrollShadow,
 } from "@heroui/react";
 import { usePaper } from "../../providers/paper";
-import { IconStopwatch } from "@tabler/icons-react";
+import { IconChecks, IconStopwatch } from "@tabler/icons-react";
 import { useTimer } from "../../hooks/usePaperTimer";
+import { motion } from "framer-motion";
 
 export const AnswerSection = () => {
     const { selectedPaper, attemptStarted, setAttemptStarted } = usePaper();
-    const { play } = useTimer();
+    const { play, isRunning } = useTimer();
     if (!selectedPaper) return <></>;
     return (
         <div className="flex flex-col gap-6 h-full p-5">
@@ -36,7 +39,13 @@ export const AnswerSection = () => {
                     </span>
                 </div>
             </div>
-            <div className="">
+            <motion.div
+                className="relative"
+                animate={{
+                    opacity: isRunning ? 0 : 1,
+                    y: isRunning ? -50 : 0,
+                }}
+            >
                 <Button
                     onPress={() => {
                         setAttemptStarted(true);
@@ -50,7 +59,7 @@ export const AnswerSection = () => {
                 >
                     Start Attempt
                 </Button>
-            </div>
+            </motion.div>
             <ScrollShadow className="flex-grow rounded-3xl h-[75svh] overflow-auto scrollbar-hide">
                 {selectedPaper.metadata?.paper_type === "MCQs" ? (
                     <MCQsPaper
@@ -67,13 +76,13 @@ export const AnswerSection = () => {
 
 import { RadioGroup, Radio } from "@heroui/radio";
 import { useState } from "react";
+import { toast } from "sonner";
 
 type AnswerObj = {
+    type: "mcq" | "theory";
     question: number;
     answer: string;
 };
-
-// TODO: Add Submit Button
 
 function MCQsPaper(props: { started: boolean; questions: number }) {
     // Initialize state with an array of answer objects
@@ -81,6 +90,7 @@ function MCQsPaper(props: { started: boolean; questions: number }) {
         Array.from({ length: props.questions }, (_, i) => ({
             question: i + 1,
             answer: "",
+            type: "mcq",
         })),
     );
 
@@ -89,6 +99,14 @@ function MCQsPaper(props: { started: boolean; questions: number }) {
         const newAnswers = [...answers];
         newAnswers[index] = { ...newAnswers[index], answer: value };
         setAnswers(newAnswers);
+    };
+
+    const handleSubmit = () => {
+        if (answers.some((answer) => answer.answer === "")) {
+            return toast.error(
+                "Please answer all questions before submitting.",
+            );
+        }
     };
 
     return (
@@ -114,7 +132,19 @@ function MCQsPaper(props: { started: boolean; questions: number }) {
                         <Radio value="d">Option D</Radio>
                     </RadioGroup>
                 ))}
+                <Divider />
             </CardBody>
+            <CardFooter>
+                <Button
+                    isDisabled={answers.some((answer) => answer.answer === "")}
+                    onPress={handleSubmit}
+                    startContent={<IconChecks />}
+                    fullWidth
+                    variant="flat"
+                >
+                    Submit
+                </Button>
+            </CardFooter>
         </Card>
     );
 }

@@ -61,6 +61,7 @@ interface PdfDocumentProps {
     pages: number;
     options: DocumentProps["options"];
 }
+
 export function PdfDocument({ value, pages, options }: PdfDocumentProps) {
     const [scale, setScale] = useState(1.5);
 
