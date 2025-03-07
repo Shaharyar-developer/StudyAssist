@@ -15,6 +15,13 @@ export const withPaperAdjustments = (props: PaperHead) => {
     const { onOpen, onClose, onOpenChange, isOpen } = useDisclosure();
     const { mutateAsync: addMarkingScheme } =
         trpcReact.addMarkingScheme.useMutation();
+    const handleMarkingScheme = async () => {
+        const res = await addMarkingScheme(props.id);
+        if (res.reason) {
+            throw new Error(res.reason);
+        }
+    };
+
     const Comp = (
         <>
             <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -33,15 +40,11 @@ export const withPaperAdjustments = (props: PaperHead) => {
                                 <p>Marking Scheme Not Present</p>{" "}
                                 <Button
                                     onPress={() => {
-                                        toast.promise(
-                                            addMarkingScheme(props.id),
-                                            {
-                                                loading:
-                                                    "Adding Marking Scheme",
-                                                success: "Marking Scheme Added",
-                                                error: "Failed to add Marking Scheme",
-                                            },
-                                        );
+                                        toast.promise(handleMarkingScheme(), {
+                                            loading: "Adding Marking Scheme",
+                                            error: "Failed to add Marking Scheme",
+                                            success: "Marking Scheme Added",
+                                        });
                                     }}
                                     variant="flat"
                                     radius="lg"

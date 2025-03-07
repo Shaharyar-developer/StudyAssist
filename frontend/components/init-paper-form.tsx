@@ -9,10 +9,10 @@ export const withInitPaperForm = () => {
         const res = await mutateAsync();
         await new Promise((resolve) => setTimeout(resolve, 1000));
         if (res.success) {
-            toast.success("Paper created");
             utils.getPapers.invalidate();
+            return true;
         } else {
-            toast.error("Failed to create paper");
+            throw new Error(res.reason);
         }
     }
     async function start() {
