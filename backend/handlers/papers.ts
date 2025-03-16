@@ -417,6 +417,7 @@ export class PaperStore {
             filename: `${id}.pdf`,
             status: "pending",
             hasMarkingScheme: false,
+            hasSubmission: false,
         };
 
         try {
